@@ -33,8 +33,9 @@ fn plot1(x: f64) {
     }
 }
 
+const DECIMATE : i64 = 44100 / 30;
+
 pub fn plot(gen: &mut impl Gen) {
-    let DECIMATE = 44100 / 30;
     for n in 0 .. SAMPLE_RATE as i64 {
         if n % DECIMATE == 0 {
             plot1(gen.gen());

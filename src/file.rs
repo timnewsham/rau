@@ -50,7 +50,7 @@ impl Drop for Tape {
     fn drop(&mut self) {
         let mut out = Vec::new();
         convert(&self.samples, &mut out);
-        fs::write(&self.fname, out);
+        fs::write(&self.fname, out).expect("couldnt write file");
     }
 }
 

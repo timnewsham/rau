@@ -4,18 +4,10 @@ mod file;
 mod gen;
 mod units;
 
-use crate::units::{Hz, Cent, Sec, Samples};
-use crate::gen::{HarmonicGenerator, Gen};
+use crate::units::{Hz, Cent, Sec};
+use crate::gen::HarmonicGenerator;
 use crate::ascii::plot;
 use crate::file::Tape;
-
-fn record(gen: &mut impl Gen, time: impl Into<Samples>, tape: &mut Vec<f64>) {
-    let samples : Samples = time.into();
-    for _ in 1 .. samples.0 {
-        tape.push(gen.gen());
-        gen.advance();
-    }
-}
 
 fn visual_check() {
     plot(&mut HarmonicGenerator::new_sine(Hz(2.0)));

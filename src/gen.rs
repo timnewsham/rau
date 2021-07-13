@@ -75,6 +75,7 @@ pub struct HarmonicGenerator {
     series: Vec<HarmonicParam>,
 }
 
+#[allow(dead_code)]
 impl HarmonicGenerator {
     // internal constructor
     fn new_series(freq: impl Into<RadPS>, series: Vec<HarmonicParam>) -> HarmonicGenerator {
