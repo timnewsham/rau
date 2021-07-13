@@ -1,0 +1,168 @@
+<html>
+<head>
+<script>
+slider = 3;
+shape = "sin";
+freq = 1.0;
+
+/*
+ N = 44100
+ gen[n] = amp * sin(2*pi*f * n/N)
+ when N=44100, n=44100, n/N = 1.0, f=1Hz, 
+    gen = sin(2*pi * f * n/N) = sin(2*pi)
+
+
+ phaseAdv(freq) = 2 * pi * f / N
+ if f <= N/2, then phaseAdv <= 2 * pi * N/2N = pi
+ */
+
+// fourier series for each wave shape
+series = function() {
+  var ws = [];
+  if(shape == "sin") {
+    ws.push([1.0, 1.0]);
+  } else if(shape == "sawUp") { 
+    for(var k = 1; k <= slider; k++) {
+        ws.push([k, - 2/(k * Math.PI) * Math.pow(-1, k)]);
+    }
+  } else if(shape == "sawDown") { 
+    for(var k = 1; k <= slider; k++) {
+        ws.push([k, 2/(k * Math.PI) * Math.pow(-1, k)]);
+    }
+  } else if(shape == "tri") { 
+    for(var n = 1; n <= slider; n++) {
+        var k = 2*n - 1; // odd harmonics only
+        ws.push([k, 8/((k * Math.PI)**2) * Math.pow(-1, (k-1)/2)]);
+    }
+  } else if(shape == "square") { 
+    for(var n = 1; n <= slider; n++) {
+        var k = 2*n - 1; // odd harmonics only
+        ws.push([k, -4/(k * Math.PI) * Math.pow(-1, k)]);
+    }
+  }
+  return ws;
+}
+
+// additive synthesis function using gWeights
+wave = function(t) {
+  var ws = gWeights;
+  var wfreq = freq * 2 * Math.PI;
+  var v = 0.0;
+  for(var i = 0; i < ws.length; i++) {
+    var b = ws[i][1];
+    var k = ws[i][0];
+    v += b * Math.sin(wfreq * t * k);
+  }
+  return v;
+}
+
+draw = function() {
+  gWeights = series(); // global
+
+  var W = 640;
+  var H = 400;
+  var canvas = document.getElementById('gfx');
+  var ctx = canvas.getContext('2d');
+
+  // bg
+  var grad = ctx.createLinearGradient(0, 0, W, H);                           
+  grad.addColorStop(0, "white");                                              
+  grad.addColorStop(1, "rgb(210,210,255)");                                   
+  ctx.fillStyle = grad;                                                      
+  ctx.fillRect(0, 0, W, H);
+  //ctx.fillStyle = 'white';
+  //ctx.fillRect(0, 0, W, H);
+
+  projV = function(v) {
+    return 0.5 * (0.8 * -v + 1.0) * H;
+  };
+
+  // graph grid
+  ctx.strokeStyle = 'grey';
+  ctx.moveTo(0, projV(1.0));
+  ctx.lineTo(W-1, projV(1.0));
+  ctx.stroke();
+  ctx.moveTo(0, projV(-1.0));
+  ctx.lineTo(W-1, projV(-1.0));
+  ctx.stroke();
+  ctx.moveTo(0, projV(0.0));
+  ctx.lineTo(W-1, projV(0.0));
+  ctx.stroke();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, H-1);
+  ctx.stroke();
+  ctx.moveTo(W-1, 0);
+  ctx.lineTo(W-1, H-1);
+  ctx.stroke();
+
+  // plot the function
+  for(var x = 0; x < W; x++) {
+    var t = x/(W-1.0);
+    var v = wave(t);
+    var y = projV(v);
+
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(x, y, 2, 2);
+    //if(x % 100 == 0) console.log(x,y, t,v);
+  }
+
+  // plot the weights
+  var MAXOVERTONE = 40;
+  var cy = projV(0);
+  for(var i = 0; i < gWeights.length; i++) {
+    var b = gWeights[i][1];
+    var k = gWeights[i][0];
+    var x = W * k / MAXOVERTONE;
+    var y = projV(b); // b and v have same ranges...
+    ctx.fillStyle = 'red';
+    ctx.fillRect(x, cy, 3, y-cy);
+  }
+
+  ctx.font = '20px serif';
+  ctx.fillStyle = 'black';
+  ctx.fillText("Shape: " + shape, 30, H-05)
+  ctx.fillText("Series length: " + gWeights.length, 30, H-25)
+  ctx.fillText("Freq: " + freq + "Hz", 30, H-45)
+}
+
+sliderChange = function(x) {
+    console.log("slider", x.value);
+    slider = x.value;
+    draw();
+}
+freqChange = function(x) {
+    console.log("freq", x.value);
+    freq = x.value;
+    draw();
+}
+
+shapeChange = function(x) {
+    console.log("shape", x.value);
+    shape = x.value;
+    draw();
+}
+</script>
+</head>
+<body onload="draw()">
+<h1>Fourier</h1>
+
+<input type=radio name=shape value=sin onchange="shapeChange(this)">
+Sine<br>
+<input type=radio name=shape value=tri onchange="shapeChange(this)">
+Triangle<br>
+<input type=radio name=shape value=sawUp onchange="shapeChange(this)">
+Saw Up<br>
+<input type=radio name=shape value=square onchange="shapeChange(this)">
+Square<br>
+<!-- <input type=radio name=shape value=sawDown onchange="shapeChange(this)"> 
+Saw Down<br> -->
+
+<input type=range min=1 max=20 value=3 onchange="sliderChange(this)">
+Length<br>
+<input type=range min=1 max=10 value=3 onchange="freqChange(this)">
+Freq<br>
+
+<canvas id=gfx width=640 height=400></canvas><br>
+
+</body>
+</html>
