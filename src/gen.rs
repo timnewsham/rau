@@ -1,6 +1,7 @@
 
+use std::convert::Into;
 use std::f64::consts::PI;
-use crate::freq::{Freq, Cent, MAXFREQ};
+use crate::freq::{RadPS, MAXRADPS};
 
 // Interface for anything generating values on a per-sample basis.
 pub trait Gen {
@@ -66,52 +67,48 @@ fn square_series(n: u64) -> Vec<HarmonicParam> {
 // An additive generator generates a signal as a sum of SIN waves.
 pub struct HarmonicGenerator {
     // invariant: 0 <= phase < 2*PI
-    phase: Freq,
+    phase: f64, // in radians
 
     // invariant: 0 <= velocity < PI
-    velocity: Freq,
+    velocity: RadPS,
 
     series: Vec<HarmonicParam>,
 }
 
 impl HarmonicGenerator {
     // internal constructor
-    fn new_series(hz: f64, series: Vec<HarmonicParam>) -> HarmonicGenerator {
+    fn new_series(freq: impl Into<RadPS>, series: Vec<HarmonicParam>) -> HarmonicGenerator {
         // XXX truncate series to prevent aliasing
         HarmonicGenerator {
-            phase: Freq::default(),
-            velocity: Freq::from_hz(hz),
+            phase: 0.0,
+            velocity: freq.into(),
             series: series,
         }
     }
 
-    pub fn new_sine(hz: f64) -> HarmonicGenerator {
-        HarmonicGenerator::new_series(hz, sine_series())
+    pub fn new_sine(freq: impl Into<RadPS>) -> HarmonicGenerator {
+        HarmonicGenerator::new_series(freq, sine_series())
     }
 
-    pub fn new_triangle(hz: f64, n: u64) -> HarmonicGenerator {
-        HarmonicGenerator::new_series(hz, triangle_series(n))
+    pub fn new_triangle(freq: impl Into<RadPS>, n: u64) -> HarmonicGenerator {
+        HarmonicGenerator::new_series(freq, triangle_series(n))
     }
 
-    pub fn new_saw_up(hz: f64, n: u64) -> HarmonicGenerator {
-        HarmonicGenerator::new_series(hz, saw_up_series(n))
+    pub fn new_saw_up(freq: impl Into<RadPS>, n: u64) -> HarmonicGenerator {
+        HarmonicGenerator::new_series(freq, saw_up_series(n))
     }
 
-    pub fn new_square(hz: f64, n: u64) -> HarmonicGenerator {
-        HarmonicGenerator::new_series(hz, square_series(n))
+    pub fn new_square(freq: impl Into<RadPS>, n: u64) -> HarmonicGenerator {
+        HarmonicGenerator::new_series(freq, square_series(n))
     }
 
-    pub fn set_freq(&mut self, hz: f64) {
-        self.velocity = Freq::from_hz(hz);
-    }
-
-    pub fn set_note(&mut self, note: f64) {
-        self.velocity = Cent(note).to_freq();
+    pub fn set_freq(&mut self, freq: impl Into<RadPS>) {
+        self.velocity = freq.into();
     }
 
     pub fn set_phase(&mut self, theta: f64) {
         debug_assert!(theta >= 0.0);
-        self.phase.0 = theta % (2.0 * PI);
+        self.phase = theta % (2.0 * PI);
     }
 
     pub fn set_sine(&mut self) {
@@ -133,7 +130,7 @@ impl HarmonicGenerator {
     pub fn cost(&self) -> usize {
         let mut cost = 0;
         for param in self.series.iter() {
-            if param.k * self.velocity.0 < MAXFREQ {
+            if param.k * self.velocity.0 < MAXRADPS {
                 cost += 1;
             }
         }
@@ -143,7 +140,7 @@ impl HarmonicGenerator {
 
 impl Gen for HarmonicGenerator {
     fn advance(&mut self) {
-        self.phase.0 = (self.phase.0 + self.velocity.0) % (2.0 * PI);
+        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
     }
 
     fn gen(&mut self) -> f64 {
@@ -151,8 +148,8 @@ impl Gen for HarmonicGenerator {
         for param in self.series.iter() {
             // disallow aliasing
             // XXX would be better to trim series once instead of each gen
-            if param.k * self.velocity.0 < MAXFREQ {
-                x += param.amp * (param.k * self.phase.0).sin();
+            if param.k * self.velocity.0 < MAXRADPS {
+                x += param.amp * (param.k * self.phase).sin();
             }
         }
         x
