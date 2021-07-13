@@ -6,7 +6,7 @@ fn repeat(ch: char, n: i64) {
     }
 }
 
-fn plot(x: f64) {
+fn plot1(x: f64) {
     let center = 40;
     let width = 74;
     let mut off = (((x * width as f64) / 2.0) as i64) + center;
@@ -31,35 +31,31 @@ fn plot(x: f64) {
     }
 }
 
-fn plotGen(gen: &mut freq::AddGenerator) {
-    for _ in 0 .. freq::SAMPLE_RATE as i64 {
-        plot(gen.gen());
+fn plot(gen: &mut freq::HarmonicGenerator) {
+    let DECIMATE = 44100 / 30;
+    for n in 0 .. freq::SAMPLE_RATE as i64 {
+        if n % DECIMATE == 0 {
+            plot1(gen.gen());
+        }
         gen.advance();
     }
-}
-
-fn mainx() {
-    //let mut phase = freq::Freq::default();
-    //let adv = freq::Freq::from_hz(440.0);
-    //let adv = freq::Freq::from_hz(2.0);
-    //let mut last = freq::Freq::default();
-    //let mut accum = freq::PhaseAccum::from_hz(440.0);
-    let mut accum = freq::PhaseAccum::from_hz(1.0);
-    
-    //println!("I got {:?} {:?}", phase, adv);
-    for _ in 0 .. freq::SAMPLE_RATE as i64 {
-        //println!("phase {:?}", phase);
-        //last = phase;
-        plot(accum.sin());
-        accum.advance();
-        //phase.advance(adv);
-        //if phase < last { println!("cycle!"); }
-    }
+    println!("Cost {:?}", gen.cost());
+    println!("");
 }
 
 fn main() {
-    plotGen(&mut freq::AddGenerator::new_sin(2.0));
-    plotGen(&mut freq::AddGenerator::new_triangle(2.0, 5));
-    plotGen(&mut freq::AddGenerator::new_saw(2.0, 5));
-    plotGen(&mut freq::AddGenerator::new_square(2.0, 5));
+    plot(&mut freq::HarmonicGenerator::new_sine(2.0));
+    plot(&mut freq::HarmonicGenerator::new_triangle(2.0, 10));
+    plot(&mut freq::HarmonicGenerator::new_saw_up(2.0, 10));
+    plot(&mut freq::HarmonicGenerator::new_square(2.0, 10));
+
+    // cost: 2
+    let mut gen = freq::HarmonicGenerator::new_saw_up(10000.0, 40);
+    debug_assert!(gen.cost() == 2);
+
+    // verify phase continuity
+    gen.set_freq(0.5);
+    plot(&mut gen);
+    gen.set_sine();
+    plot(&mut gen);
 }
