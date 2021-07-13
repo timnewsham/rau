@@ -47,7 +47,7 @@ impl Cent {
     }
 
     pub fn to_hz(self) -> f64 {
-        440.0 * (2.0_f64).powf(self.0 / 12.0)
+        440.0 * (2.0_f64).powf(self.0 / 1200.0)
     }
 
     pub fn to_freq(self) -> Freq {
