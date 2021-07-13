@@ -1,6 +1,6 @@
 
 use std::f64::consts::PI;
-use crate::freq::{Freq, MAXFREQ};
+use crate::freq::{Freq, Cent, MAXFREQ};
 
 // Interface for anything generating values on a per-sample basis.
 pub trait Gen {
@@ -103,6 +103,10 @@ impl HarmonicGenerator {
 
     pub fn set_freq(&mut self, hz: f64) {
         self.velocity = Freq::from_hz(hz);
+    }
+
+    pub fn set_note(&mut self, note: Cent) {
+        self.velocity = note.to_freq();
     }
 
     pub fn set_phase(&mut self, theta: f64) {

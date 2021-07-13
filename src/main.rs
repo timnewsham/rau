@@ -42,7 +42,23 @@ fn make_file() {
     file::writeFile("out.s16", &tape);
 }
 
+fn make_sweep() {
+    let mut tape = Vec::new();
+    //let mut gen = gen::HarmonicGenerator::new_square(10000.0, 40);
+    let mut gen = gen::HarmonicGenerator::new_saw_up(10000.0, 40);
+    //let mut gen = gen::HarmonicGenerator::new_sine(1.0);
+
+    // 5 octaves
+    for cent in 0..(1200 * 5) {
+        gen.set_note(freq::Cent::new(cent as f64));
+        // an octave a second
+        record(&mut gen, 1.0/1200.0, &mut tape);
+    }
+    file::writeFile("sweep.s16", &tape);
+}
+
 fn main() {
     make_file();
+    make_sweep();
     visual_check();
 }
