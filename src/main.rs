@@ -50,7 +50,7 @@ fn make_sweep() {
 
     // 5 octaves
     for cent in 0..(1200 * 5) {
-        gen.set_note(freq::Cent::new(cent as f64));
+        gen.set_note(cent as f64);
         // an octave a second
         record(&mut gen, 1.0/1200.0, &mut tape);
     }

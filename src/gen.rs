@@ -105,8 +105,8 @@ impl HarmonicGenerator {
         self.velocity = Freq::from_hz(hz);
     }
 
-    pub fn set_note(&mut self, note: Cent) {
-        self.velocity = note.to_freq();
+    pub fn set_note(&mut self, note: f64) {
+        self.velocity = Cent(note).to_freq();
     }
 
     pub fn set_phase(&mut self, theta: f64) {
