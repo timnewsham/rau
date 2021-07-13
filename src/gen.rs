@@ -40,6 +40,14 @@ fn saw_up_series(n: u64) -> Vec<HarmonicParam> {
     weights
 }
 
+fn saw_down_series(n: u64) -> Vec<HarmonicParam> {
+    let mut params = saw_up_series(n);
+    for p in params.iter_mut() {
+        p.amp *= -1.0;
+    }
+    params
+}
+
 fn triangle_series(n: u64) -> Vec<HarmonicParam> {
     let mut weights = Vec::new();
     for kk in 1..=n {
@@ -99,6 +107,10 @@ impl HarmonicGenerator {
         HarmonicGenerator::new_series(freq, saw_up_series(n))
     }
 
+    pub fn new_saw_down(freq: impl Into<RadPS>, n: u64) -> HarmonicGenerator {
+        HarmonicGenerator::new_series(freq, saw_down_series(n))
+    }
+
     pub fn new_square(freq: impl Into<RadPS>, n: u64) -> HarmonicGenerator {
         HarmonicGenerator::new_series(freq, square_series(n))
     }
@@ -122,6 +134,10 @@ impl HarmonicGenerator {
 
     pub fn set_saw_up(&mut self, n: u64) {
         self.series = saw_up_series(n);
+    }
+
+    pub fn set_saw_down(&mut self, n: u64) {
+        self.series = saw_down_series(n);
     }
 
     pub fn set_square(&mut self, n: u64) {
