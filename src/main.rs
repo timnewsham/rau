@@ -58,8 +58,26 @@ fn make_sweep() {
     file::writeFile("sweep.s16", &tape);
 }
 
+fn make_tune() {
+    let dur = 0.25;
+    let mut tape = Vec::new();
+    let mut gen = gen::HarmonicGenerator::new_sine(1.0);
+
+    let notes = vec![
+        7,5,3,5,
+        7,7,7,7,
+        5,5,5,5,
+        7,10,10,10];
+    for note in notes {
+        gen.set_note(note as f64 * 100.0);
+        record(&mut gen, dur, &mut tape);
+    }
+    file::writeFile("tune.s16", &tape);
+}
+
 fn main() {
     make_file();
     make_sweep();
+    make_tune();
     visual_check();
 }
