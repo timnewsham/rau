@@ -1,6 +1,6 @@
 
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write,BufWriter};
 use std::convert::Into;
 use crate::units::Samples;
 use crate::gen::Gen;
@@ -33,14 +33,15 @@ fn conv(x: f64) -> (u8, u8) {
 }
 
 pub struct Tape {
-    f: File,
+    f: BufWriter<File>,
 }
 
 impl Tape {
     pub fn new(fname: &str) -> Self {
         let f = File::create(fname).expect("cant open");
+        let buff = BufWriter::new(f);
         Tape {
-            f: f,
+            f: buff,
         }
     }
 
