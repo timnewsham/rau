@@ -1,16 +1,16 @@
 
 mod ascii;
 mod file;
-mod freq;
 mod gen;
+mod units;
 
-use crate::freq::{Hz, Cent};
+use crate::units::{Hz, Cent, Sec, Samples};
 use crate::gen::{HarmonicGenerator, Gen};
 use crate::ascii::plot;
 
-fn record(gen: &mut impl Gen, seconds: f64, tape: &mut Vec<f64>) {
-    let samples = (seconds * freq::SAMPLE_RATE) as usize;
-    for _ in 1..samples {
+fn record(gen: &mut impl Gen, time: impl Into<Samples>, tape: &mut Vec<f64>) {
+    let samples : Samples = time.into();
+    for _ in 1 .. samples.0 {
         tape.push(gen.gen());
         gen.advance();
     }
@@ -40,9 +40,9 @@ fn make_file() {
     //let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
 
     gen.set_freq(Hz(440.0));
-    record(&mut gen, 0.25, &mut tape);
+    record(&mut gen, Sec(0.25), &mut tape);
     gen.set_freq(Hz(880.0));
-    record(&mut gen, 0.25, &mut tape);
+    record(&mut gen, Sec(0.25), &mut tape);
     file::writeFile("out.s16", &tape);
 }
 
@@ -57,13 +57,13 @@ fn make_sweep() {
     for cent in 0..(1200 * 5) {
         gen.set_freq(Cent(cent as f64));
         // an octave a second
-        record(&mut gen, 1.0/1200.0, &mut tape);
+        record(&mut gen, Sec(1.0/1200.0), &mut tape);
     }
     file::writeFile("sweep.s16", &tape);
 }
 
 fn make_tune() {
-    let dur = 0.25;
+    let dur = Sec(0.25);
     let mut tape = Vec::new();
     let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
 

@@ -1,5 +1,5 @@
 
-use crate::freq::SAMPLE_RATE;
+use crate::units::SAMPLE_RATE;
 use crate::gen::Gen;
 
 fn repeat(ch: char, n: i64) {

@@ -1,5 +1,5 @@
 
-use std::convert::{From};
+use std::convert::From;
 use std::f64::consts::PI;
 
 // XXX prefer an API where this configurable
@@ -8,6 +8,26 @@ use std::f64::consts::PI;
 
 pub const SAMPLE_RATE : f64 = 44100.0; // Hz
 pub const MAXRADPS : f64 = PI; // RadPS
+
+// time in seconds
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct Sec(pub f64);
+
+// time in samples
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct Samples(pub u64);
+
+impl From<Samples> for Sec {
+    fn from(x: Samples) -> Sec {
+        Sec(x.0 as f64 / SAMPLE_RATE)
+    }
+}
+
+impl From<Sec> for Samples {
+    fn from(x: Sec) -> Samples {
+        Samples((SAMPLE_RATE * x.0) as u64)
+    }
+}
 
 // frequencies in Hz
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]

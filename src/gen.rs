@@ -1,7 +1,7 @@
 
 use std::convert::Into;
 use std::f64::consts::PI;
-use crate::freq::{RadPS, MAXRADPS};
+use crate::units::{RadPS, MAXRADPS};
 
 // Interface for anything generating values on a per-sample basis.
 pub trait Gen {
