@@ -42,6 +42,7 @@ fn make_file() {
     file::writeFile("out.s16", &tape);
 }
 
+// sox -r 44100 -e signed -B -b 16 -c 1 sweep.s16 sweep.wav
 fn make_sweep() {
     let mut tape = Vec::new();
     //let mut gen = gen::HarmonicGenerator::new_square(10000.0, 40);
