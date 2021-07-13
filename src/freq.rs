@@ -10,7 +10,7 @@ pub const SAMPLE_RATE : f64 = 44100.0;
 pub const MAXFREQ : f64 = PI; // in rad/sample
 
 /*
- * Freq()s represent frequencies in radians per sample.
+ * Freqs represent frequencies in radians per sample.
  * A frequency of PI represents half the sampling frequency
  * and is the largest frequency representable without aliasing.
  * These frequencies can be used directly as phase velocities
@@ -27,6 +27,35 @@ impl Freq {
         Freq( mfreq )
     }
 }
+
+/*
+ * Cents represent note values in cents above A 440.
+ */
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct Cent(f64);
+
+impl Cent {
+    pub fn new(cent: f64) -> Cent {
+        Cent(cent)
+    }
+
+    // Get internal frequence from Hz
+    pub fn from_hz(hz: f64) -> Freq {
+        let mfreq = hz * (2.0 * PI / SAMPLE_RATE);
+        debug_assert!(mfreq <= PI);
+        Freq( mfreq )
+    }
+
+    pub fn to_hz(self) -> f64 {
+        440.0 * (2.0_f64).powf(self.0 / 12.0)
+    }
+
+    pub fn to_freq(self) -> Freq {
+        Freq::from_hz(self.to_hz())
+    }
+}
+
+
 
 // Param in a harmonic series
 // note: k is usually but need not be an integer.
