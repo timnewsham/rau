@@ -44,12 +44,18 @@ fn make_sweep() {
     let mut gen = HarmonicGenerator::new_saw_up(Hz(1.0), 40);
     //let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
 
-    // 5 octaves
+    // 5 octaves up
     let mut tape = Tape::new("sweep.s16");
     for cent in 0..(1200 * 5) {
         gen.set_freq(Cent(cent as f64));
-        // an octave a second
-        tape.record(&mut gen, Sec(1.0/1200.0));
+        // 0.5 seconds per octave
+        tape.record(&mut gen, Sec(0.5/1200.0));
+    }
+    // 5 octaves down
+    for cent in 0..(1200 * 5) {
+        gen.set_freq(Cent((1200*5 - cent) as f64));
+        // 0.5 seconds per octave
+        tape.record(&mut gen, Sec(0.5/1200.0));
     }
 }
 
