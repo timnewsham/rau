@@ -8,6 +8,7 @@ use std::f64::consts::PI;
 
 pub const SAMPLE_RATE : f64 = 44100.0; // Hz
 pub const MAXRADPS : f64 = PI; // RadPS
+pub const MAXHZ : f64 = SAMPLE_RATE / 2.0;
 
 // time in seconds
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
@@ -52,7 +53,7 @@ impl From<RadPS> for Hz {
 impl From<Hz> for RadPS {
     fn from(hz: Hz) -> Self {
         let mfreq = hz.0 * (2.0 * PI / SAMPLE_RATE);
-        debug_assert!(mfreq <= PI);
+        debug_assert!(mfreq <= MAXRADPS);
         RadPS(mfreq)
     }
 }

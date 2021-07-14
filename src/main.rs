@@ -22,6 +22,7 @@ fn visual_check_simple() {
     plot(&mut SimpGen::new_square(Hz(2.0)));
 }
 
+#[allow(dead_code)]
 fn visual_check_add() {
     plot(&mut AddGen::new_sine(Hz(2.0)));
     plot(&mut AddGen::new_triangle(Hz(2.0), 10));

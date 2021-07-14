@@ -5,6 +5,14 @@ use std::collections::HashMap;
 // XXX for now
 pub type TerminalDescr = String;
 
+// proposed
+#[allow(dead_code)]
+pub struct TerminalDescr2 {
+    name: String,
+    min: f64,
+    max: f64,
+}
+
 /*
  * Interface to modules with inputs and outputs and a sample-based clock.
  */

@@ -68,7 +68,7 @@ pub struct Gen {
     // invariant: 0 <= phase < 2*PI
     phase: f64, // in radians
 
-    // invariant: 0 <= velocity < PI
+    // invariant: 0 <= velocity <= PI
     velocity: RadPS,
 
     series: Vec<HarmonicParam>,
@@ -134,7 +134,7 @@ impl Gen {
     pub fn cost(&self) -> usize {
         let mut cost = 0;
         for param in self.series.iter() {
-            if param.k * self.velocity.0 < MAXRADPS {
+            if param.k * self.velocity.0 <= MAXRADPS {
                 cost += 1;
             }
         }
@@ -156,7 +156,7 @@ impl gen::Gen for Gen {
         for param in self.series.iter() {
             // disallow aliasing
             // XXX would be better to trim series once instead of each gen
-            if param.k * self.velocity.0 < MAXRADPS {
+            if param.k * self.velocity.0 <= MAXRADPS {
                 x += param.amp * (param.k * self.phase).sin();
             }
         }

@@ -11,7 +11,7 @@ pub struct Gen {
     // invariant: 0 <= phase < 2*PI
     phase: f64, // in radians
 
-    // invariant: 0 <= velocity < PI
+    // invariant: 0 <= velocity <= PI
     velocity: RadPS,
 
     amp: f64,
@@ -30,11 +30,11 @@ fn sine(phase: f64) -> f64 {
 
 fn saw_up(phase: f64) -> f64 {
     let v = phase / PI;
-    if v > 1.0 { v - 2.0 } else { v }
+    if v <= 1.0 { v } else { v - 2.0 }
 }
 
 fn square(phase: f64) -> f64 {
-    if phase < PI { 1.0 } else { -1.0 }
+    if phase <= PI { 1.0 } else { -1.0 }
 }
 
 fn triangle(phase: f64) -> f64 {
@@ -42,10 +42,10 @@ fn triangle(phase: f64) -> f64 {
     let v = phase * (2.0 / PI); // (0 .. 2PI) -> (0.0 .. 4.0)
     //debug_assert!(0.0 <= v && v <= 4.0);
 
-    if v < 1.0 {
+    if v <= 1.0 {
         v                   // (0 .. 1.0) -> (0 .. 1.0)
     } else {
-        if v < 3.0 {
+        if v <= 3.0 {
             2.0 - v         // (1.0 .. 3.0) -> (1.0 .. -1.0)
         } else {
             v - 4.0         // (3.0 .. 4.0) -> (-1.0 .. 0.0)
