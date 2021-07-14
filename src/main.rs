@@ -4,6 +4,7 @@ mod simple;
 mod ascii;
 mod file;
 mod gen;
+mod module;
 mod units;
 
 use crate::units::{Hz, Cent, Sec};
@@ -11,6 +12,7 @@ use crate::additive::Gen as AddGen;
 use crate::simple::Gen as SimpleGen;
 use crate::ascii::plot;
 use crate::file::Tape;
+use crate::module::Rack;
 
 fn visual_check_simple() {
     plot(&mut SimpleGen::new_sine(Hz(2.0)));
@@ -107,11 +109,22 @@ fn make_tune() {
     }
 }
 
+fn module_test() {
+    let mut rack = Rack::new();
+    let gen = rack.add_module(Box::new(AddGen::new_sine(Hz(440.0))));
+    let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
+    rack.add_wire(gen, "out", tape, "in");
+    for _ in 0..44100 { rack.advance(); }
+}
+
 fn main() {
     make_file();
     make_sweep();
     make_sweep2();
     make_tune();
+
+    module_test();
+
     //visual_check_add();
     visual_check_simple();
 }

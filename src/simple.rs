@@ -3,6 +3,7 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS};
 use crate::gen;
+use crate::module;
 
 // Simple function wave shape generator
 // Note: These will have low quality outputs at higher frequencies.
@@ -120,3 +121,27 @@ impl gen::Gen for Gen {
     }
 }
 
+/*
+impl module::Module for Gen {
+    fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
+        (vec![],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 {
+            Some(self.gen())
+        } else {
+            unreachable!();
+        }
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        unreachable!();
+    }
+
+    fn advance(&mut self) {
+        self.advance();
+    }
+}
+*/

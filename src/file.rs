@@ -4,6 +4,7 @@ use std::io::{Write,BufWriter};
 use std::convert::Into;
 use crate::units::Samples;
 use crate::gen::Gen;
+use crate::module;
 
 pub fn clamp(x: f64) -> f64 {
     if x < -1.0 {
@@ -55,3 +56,23 @@ impl Tape {
     }
 }
 
+impl module::Module for Tape {
+    fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
+        (vec!["in".to_string()], 
+         vec![])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        unreachable!();
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        if idx == 0 {
+            let (a,b) = conv(value);
+            self.f.write(&[a, b]).expect("cant write");
+        }
+    }
+
+    fn advance(&mut self) {
+    }
+}

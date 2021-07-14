@@ -3,6 +3,7 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS, MAXRADPS};
 use crate::gen;
+use crate::module;
 
 // Param in a harmonic series
 // note: k is usually but need not be an integer.
