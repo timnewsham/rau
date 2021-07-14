@@ -5,6 +5,8 @@ use crate::units::{RadPS};
 use crate::gen;
 
 // Simple function wave shape generator
+// Note: These will have low quality outputs at higher frequencies.
+// but might be well suited for some LFO operations.
 pub struct Gen {
     // invariant: 0 <= phase < 2*PI
     phase: f64, // in radians
@@ -14,6 +16,10 @@ pub struct Gen {
 
     func: fn(f64) -> f64,
 }
+
+// XXX exponential ramp-up?  exponential decay?
+// one-sided square waves?
+// variable width pulses?
 
 fn sine(phase: f64) -> f64 {
     phase.sin()
