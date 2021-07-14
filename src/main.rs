@@ -1,22 +1,32 @@
 
+mod additive;
+mod simple;
 mod ascii;
 mod file;
 mod gen;
 mod units;
 
 use crate::units::{Hz, Cent, Sec};
-use crate::gen::HarmonicGenerator;
+use crate::additive::Gen as AddGen;
+use crate::simple::Gen as SimpleGen;
 use crate::ascii::plot;
 use crate::file::Tape;
 
-fn visual_check() {
-    plot(&mut HarmonicGenerator::new_sine(Hz(2.0)));
-    plot(&mut HarmonicGenerator::new_triangle(Hz(2.0), 10));
-    plot(&mut HarmonicGenerator::new_saw_up(Hz(2.0), 10));
-    plot(&mut HarmonicGenerator::new_square(Hz(2.0), 10));
+fn visual_check_simple() {
+    plot(&mut SimpleGen::new_sine(Hz(2.0)));
+    plot(&mut SimpleGen::new_triangle(Hz(2.0)));
+    plot(&mut SimpleGen::new_saw_up(Hz(2.0)));
+    plot(&mut SimpleGen::new_square(Hz(2.0)));
+}
+
+fn visual_check_add() {
+    plot(&mut AddGen::new_sine(Hz(2.0)));
+    plot(&mut AddGen::new_triangle(Hz(2.0), 10));
+    plot(&mut AddGen::new_saw_up(Hz(2.0), 10));
+    plot(&mut AddGen::new_square(Hz(2.0), 10));
 
     // cost: 2
-    let mut gen = HarmonicGenerator::new_saw_up(Hz(10000.0), 40);
+    let mut gen = AddGen::new_saw_up(Hz(10000.0), 40);
     debug_assert!(gen.cost() == 2);
 
     // verify phase continuity
@@ -28,8 +38,8 @@ fn visual_check() {
 
 // sox -r 44100 -e signed -B -b 16 -c 1 out.s16 out.wav
 fn make_file() {
-    let mut gen = HarmonicGenerator::new_saw_up(Hz(1.0), 40);
-    //let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
+    let mut gen = AddGen::new_saw_up(Hz(1.0), 40);
+    //let mut gen = AddGen::new_sine(Hz(1.0));
 
     let mut tape = Tape::new("out.s16");
     gen.set_freq(Hz(440.0));
@@ -40,9 +50,9 @@ fn make_file() {
 
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep.s16 sweep.wav
 fn make_sweep() {
-    //let mut gen = HarmonicGenerator::new_square(Hz(1.0), 40);
-    let mut gen = HarmonicGenerator::new_saw_up(Hz(1.0), 40);
-    //let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
+    //let mut gen = AddGen::new_square(Hz(1.0), 40);
+    let mut gen = AddGen::new_saw_up(Hz(1.0), 40);
+    //let mut gen = AddGen::new_sine(Hz(1.0));
 
     // 5 octaves up
     let mut tape = Tape::new("sweep.s16");
@@ -61,7 +71,7 @@ fn make_sweep() {
 
 fn make_tune() {
     let dur = Sec(0.25);
-    let mut gen = HarmonicGenerator::new_sine(Hz(1.0));
+    let mut gen = AddGen::new_sine(Hz(1.0));
 
     let notes = vec![
         7,5,3,5,
@@ -80,5 +90,6 @@ fn main() {
     make_file();
     make_sweep();
     make_tune();
-    visual_check();
+    //visual_check_add();
+    visual_check_simple();
 }
