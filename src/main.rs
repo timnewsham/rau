@@ -7,18 +7,19 @@ mod gen;
 mod module;
 mod units;
 
+use crate::gen::Gen;
 use crate::units::{Hz, Cent, Sec};
 use crate::additive::Gen as AddGen;
-use crate::simple::Gen as SimpleGen;
+use crate::simple::Gen as SimpGen;
 use crate::ascii::plot;
 use crate::file::Tape;
 use crate::module::Rack;
 
 fn visual_check_simple() {
-    plot(&mut SimpleGen::new_sine(Hz(2.0)));
-    plot(&mut SimpleGen::new_triangle(Hz(2.0)));
-    plot(&mut SimpleGen::new_saw_up(Hz(2.0)));
-    plot(&mut SimpleGen::new_square(Hz(2.0)));
+    plot(&mut SimpGen::new_sine(Hz(2.0)));
+    plot(&mut SimpGen::new_triangle(Hz(2.0)));
+    plot(&mut SimpGen::new_saw_up(Hz(2.0)));
+    plot(&mut SimpGen::new_square(Hz(2.0)));
 }
 
 fn visual_check_add() {
@@ -73,9 +74,9 @@ fn make_sweep() {
 
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep2.s16 sweep2.wav
 fn make_sweep2() {
-    //let mut gen = SimpleGen::new_square(Hz(1.0));
-    let mut gen = SimpleGen::new_saw_up(Hz(1.0));
-    //let mut gen = SimpleGen::new_sine(Hz(1.0));
+    //let mut gen = SimpGen::new_square(Hz(1.0));
+    let mut gen = SimpGen::new_saw_up(Hz(1.0));
+    //let mut gen = SimpGen::new_sine(Hz(1.0));
 
     // 5 octaves up
     let mut tape = Tape::new("sweep2.s16");
@@ -110,10 +111,17 @@ fn make_tune() {
 }
 
 fn module_test() {
+    let mut lfo_ = Box::new(SimpGen::new_saw_up(Hz(4.0)));
+    lfo_.set_off(880.0);
+    lfo_.set_amp(440.0);
+
     let mut rack = Rack::new();
-    let gen = rack.add_module(Box::new(AddGen::new_sine(Hz(440.0))));
+    let osc = rack.add_module(Box::new(AddGen::new_sine(Hz(440.0))));
+    let lfo = rack.add_module(lfo_);
     let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
-    rack.add_wire(gen, "out", tape, "in");
+
+    rack.add_wire(lfo, "out", osc, "freq");
+    rack.add_wire(osc, "out", tape, "in");
     for _ in 0..44100 { rack.advance(); }
 }
 

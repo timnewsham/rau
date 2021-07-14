@@ -3,7 +3,6 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS, MAXRADPS};
 use crate::gen;
-use crate::module;
 
 // Param in a harmonic series
 // note: k is usually but need not be an integer.
@@ -107,10 +106,6 @@ impl Gen {
         Self::new_series(freq, square_series(n))
     }
 
-    pub fn set_freq(&mut self, freq: impl Into<RadPS>) {
-        self.velocity = freq.into();
-    }
-
     pub fn set_phase(&mut self, theta: f64) {
         debug_assert!(theta >= 0.0);
         self.phase = theta % (2.0 * PI);
@@ -148,6 +143,10 @@ impl Gen {
 }
 
 impl gen::Gen for Gen {
+    fn set_freq(&mut self, freq: impl Into<RadPS>) {
+        self.velocity = freq.into();
+    }
+
     fn advance(&mut self) {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
     }

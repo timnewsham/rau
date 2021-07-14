@@ -3,7 +3,6 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS};
 use crate::gen;
-use crate::module;
 
 // Simple function wave shape generator
 // Note: These will have low quality outputs at higher frequencies.
@@ -14,6 +13,9 @@ pub struct Gen {
 
     // invariant: 0 <= velocity < PI
     velocity: RadPS,
+
+    amp: f64,
+    off: f64,
 
     func: fn(f64) -> f64,
 }
@@ -59,6 +61,8 @@ impl Gen {
         Self {
             phase: 0.0,
             velocity: freq.into(),
+            amp: 1.0,
+            off: 0.0,
             func: func,
         }
     }
@@ -81,13 +85,16 @@ impl Gen {
 
     // XXX pulse with pulse width parameter?
 
-    pub fn set_freq(&mut self, freq: impl Into<RadPS>) {
-        self.velocity = freq.into();
-    }
-
     pub fn set_phase(&mut self, theta: f64) {
         debug_assert!(theta >= 0.0);
         self.phase = theta % (2.0 * PI);
+    }
+
+    pub fn set_off(&mut self, off: f64) {
+        self.off = off;
+    }
+    pub fn set_amp(&mut self, amp: f64) {
+        self.amp = amp;
     }
 
     pub fn set_sine(&mut self) {
@@ -108,12 +115,16 @@ impl Gen {
 }
 
 impl gen::Gen for Gen {
+    fn set_freq(&mut self, freq: impl Into<RadPS>) {
+        self.velocity = freq.into();
+    }
+
     fn advance(&mut self) {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
     }
 
     fn gen(&self) -> f64 {
-        (self.func)(self.phase)
+        self.off + self.amp * (self.func)(self.phase)
     }
 
     fn cost(&self) -> usize {
@@ -121,27 +132,3 @@ impl gen::Gen for Gen {
     }
 }
 
-/*
-impl module::Module for Gen {
-    fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
-        (vec![],
-         vec!["out".to_string()])
-    }
-
-    fn get_output(&self, idx: usize) -> Option<f64> {
-        if idx == 0 {
-            Some(self.gen())
-        } else {
-            unreachable!();
-        }
-    }
-
-    fn set_input(&mut self, idx: usize, value: f64) {
-        unreachable!();
-    }
-
-    fn advance(&mut self) {
-        self.advance();
-    }
-}
-*/

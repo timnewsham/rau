@@ -62,7 +62,7 @@ impl module::Module for Tape {
          vec![])
     }
 
-    fn get_output(&self, idx: usize) -> Option<f64> {
+    fn get_output(&self, _idx: usize) -> Option<f64> {
         unreachable!();
     }
 
