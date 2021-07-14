@@ -69,6 +69,27 @@ fn make_sweep() {
     }
 }
 
+// sox -r 44100 -e signed -B -b 16 -c 1 sweep2.s16 sweep2.wav
+fn make_sweep2() {
+    //let mut gen = SimpleGen::new_square(Hz(1.0));
+    let mut gen = SimpleGen::new_saw_up(Hz(1.0));
+    //let mut gen = SimpleGen::new_sine(Hz(1.0));
+
+    // 5 octaves up
+    let mut tape = Tape::new("sweep2.s16");
+    for cent in 0..(1200 * 5) {
+        gen.set_freq(Cent(cent as f64));
+        // 0.5 seconds per octave
+        tape.record(&mut gen, Sec(0.5/1200.0));
+    }
+    // 5 octaves down
+    for cent in 0..(1200 * 5) {
+        gen.set_freq(Cent((1200*5 - cent) as f64));
+        // 0.5 seconds per octave
+        tape.record(&mut gen, Sec(0.5/1200.0));
+    }
+}
+
 fn make_tune() {
     let dur = Sec(0.25);
     let mut gen = AddGen::new_sine(Hz(1.0));
@@ -89,6 +110,7 @@ fn make_tune() {
 fn main() {
     make_file();
     make_sweep();
+    make_sweep2();
     make_tune();
     //visual_check_add();
     visual_check_simple();
