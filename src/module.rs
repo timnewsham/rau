@@ -95,10 +95,9 @@ impl Rack {
             if let Some(out) = out_cache.get(&k) {
                 self.modules[w.to_mod].set_input(w.to_in, *out);
             } else {
-                if let Some(out) = self.modules[w.from_mod].get_output(w.from_out) {
-                    self.modules[w.to_mod].set_input(w.to_in, out);
-                    out_cache.insert(k, out);
-                }
+                let out = self.modules[w.from_mod].get_output(w.from_out).unwrap_or(0.0);
+                self.modules[w.to_mod].set_input(w.to_in, out);
+                out_cache.insert(k, out);
             }
         }
     }
