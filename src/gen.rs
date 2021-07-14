@@ -30,7 +30,7 @@ impl<T> module::Module for T where T: Gen {
     fn set_input(&mut self, idx: usize, value: f64) {                           
         if idx == 0 {
             let freq = Hz(value.clamp(0.0, MAXHZ));
-            self.set_freq(Hz(value));
+            self.set_freq(freq);
         } else {
             unreachable!();
         }
