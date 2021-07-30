@@ -13,3 +13,8 @@ with sox or played directly:
     `sox -r 44100 -e signed -B -b 16 -c 1 sweep.s16 sweep.wav`
     `play -r 44100 -e signed -B -b 16 -c 1 sweep.s16`
 
+
+# Helpers
+
+The `filtviz` subdir contains a frequency response viewer for
+the filter parameter generator.  Run with `cargo run -p filtviz`.
