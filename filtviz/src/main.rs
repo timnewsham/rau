@@ -147,8 +147,7 @@ impl epi::App for App {
             let plot = Plot::new("freq response")
                 .line(curve)
                 .view_aspect(1.5)
-                //.include_x(FNYQ)
-                .include_y(0.0)
+                .include_y(MINDB)
                 .include_y(2.0)
                 ;
             ui.add(plot);
