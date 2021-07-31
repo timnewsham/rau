@@ -57,6 +57,16 @@ fn curve(freq: f64, series: &Vec<(usize, f64)>) -> Line {
         .name("Waveform")
 }
 
+fn harmonics(series: &Vec<(usize, f64)>) -> Vec<Line> {
+    series.iter().map(|(k, b)| {
+            let x = *k as f64 / 30.0;
+            let vs = vec!(Value::new(x, 0.0), Value::new(x, *b));
+            Line::new(Values::from_values(vs))
+                .color(Color32::from_rgb(250,050,050))
+                .name("weight")
+        }).collect()
+}
+
 impl epi::App for App {
     fn name(&self) -> &str { "Fourier Fun" }
     //fn setup(&mut self, _ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>, _storage: Option<&dyn epi::Storage>) { }
@@ -76,7 +86,7 @@ impl epi::App for App {
             });
 
             let curve = curve(*freq, &series);
-            let plot = Plot::new("phase plot")
+            let mut plot = Plot::new("phase plot")
                 .line(curve)
                 .view_aspect(1.5)
                 .include_y(-1.5)
@@ -84,6 +94,9 @@ impl epi::App for App {
                 .include_x(0.0)
                 .include_x(1.0)
                 ;
+            for l in harmonics(&series) {
+                plot = plot.line(l);
+            }
             ui.add(plot);
         });
     }
