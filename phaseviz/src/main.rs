@@ -24,8 +24,8 @@ impl App {
         let mut samples = Vec::new();
         if let BitDepth::Sixteen(vs) = dat {
             for i in (0..vs.len()).step_by(2) {
-                let left = (vs[i] as f64) / 32768.0;
-                let right = (vs[i+1] as f64) / 32768.0;
+                let right = (vs[i] as f64) / 32768.0;
+                let left = (vs[i+1] as f64) / 32768.0;
                 samples.push(Sample{ left: left, right: right } );
             }
         } else {
