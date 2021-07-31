@@ -18,3 +18,7 @@ with sox or played directly:
 
 The `filtviz` subdir contains a frequency response viewer for
 the filter parameter generator.  Run with `cargo run -p filtviz`.
+
+The `phaseviz` subdir contains a phase meter. It reads in a file
+from the current directory named `test.wav` which should be a
+stereo file with 16-bit samples. Run with `cargo run -p phaseviz`.
