@@ -6,7 +6,7 @@ use std::f64::consts::PI;
 // but that would mean that all previous Freqs have to change
 // as soon as the sampleRate is changed...  think about this more.
 
-pub const SAMPLE_RATE : f64 = 44100.0; // Hz
+pub const SAMPLE_RATE : f64 = 48000.0; // Hz
 pub const MAXRADPS : f64 = PI; // RadPS
 pub const MAXHZ : f64 = SAMPLE_RATE / 2.0;
 

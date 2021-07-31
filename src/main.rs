@@ -5,6 +5,7 @@ mod ascii;
 mod file;
 mod gen;
 mod module;
+mod speaker;
 mod units;
 
 use crate::gen::Gen;
@@ -14,6 +15,7 @@ use crate::simple::Gen as SimpGen;
 use crate::ascii::plot;
 use crate::file::Tape;
 use crate::module::Rack;
+use crate::speaker::Speaker;
 
 fn visual_check_simple() {
     plot(&mut SimpGen::new_sine(Hz(2.0)));
@@ -104,7 +106,8 @@ fn make_tune() {
         5,5,5,5,
         7,10,10,10];
 
-    let mut tape = Tape::new("tune.s16");
+    //let mut tape = Tape::new("tune.s16");
+    let mut tape = Speaker::new();
     for note in notes {
         gen.set_freq(Cent(note as f64 * 100.0));
         tape.record(&mut gen, dur);
@@ -119,10 +122,12 @@ fn module_test() {
     let mut rack = Rack::new();
     let osc = rack.add_module(Box::new(AddGen::new_sine(Hz(440.0))));
     let lfo = rack.add_module(lfo_);
-    let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
+    //let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
+    let speaker = rack.add_module(Box::new(Speaker::new()));
 
     rack.add_wire(lfo, "out", osc, "freq");
-    rack.add_wire(osc, "out", tape, "in");
+    //rack.add_wire(osc, "out", tape, "in");
+    rack.add_wire(osc, "out", speaker, "in");
     for _ in 0..44100 { rack.advance(); }
 }
 

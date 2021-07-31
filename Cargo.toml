@@ -5,6 +5,7 @@ authors = ["Tim Newsham <tim.newsham@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+cpal = "0.13.3"
 
 [workspace]
 members = ["filtviz", "phaseviz", "genviz"]
