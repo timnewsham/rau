@@ -3,49 +3,31 @@ use eframe::{egui, epi};
 use egui::{Color32, remap};
 use egui::widgets::plot::{Line, Values, Value, Plot};
 
-#[derive(PartialEq, Copy, Clone)]
-enum Function { SIN, TRI, SAW, SQUARE }
+use rau::additive::{Function, Gen, HarmonicParam};
+use rau::units::{Hz};
 
 struct App {
     func: Function,
     freq: f64,
     n: usize,
+    gen: Gen,
 }
 
 impl App {
     fn new() -> Self {
-        App { func: Function::TRI, freq: 3.0, n: 3 }
-    }
-}
-
-// shorthand
-fn powneg1(k: usize) -> f64 {
-    (-1.0_f64).powf(k as f64)
-}
-
-fn make_series(func: Function, n: usize) -> Vec<(usize, f64)> {
-    match func {
-        Function::SIN => vec![(1, 1.0)],
-        Function::SAW => (1..=n).map(|k|
-                (k, -2.0 * powneg1(k) / (k as f64 * PI))
-            ).collect(),
-        Function::TRI => (1..=n).map(|nn| {
-                let k = 2*nn - 1; // odd harmonics
-                (k, 8.0 * powneg1((k-1)/2) / (k as f64 * PI).powf(2.0))
-            }).collect(),
-        Function::SQUARE => (1..=n).map(|nn| {
-                let k = 2*nn - 1; // odd harmonics
-                (k, -4.0 * powneg1(k) / (k as f64 * PI))
-            }).collect(),
+        App { 
+            func: Function::TRI, freq: 3.0, n: 3, 
+            gen: Gen::new(Function::TRI, Hz(3.0), 3)
+        }
     }
 }
 
 // evaluate the fourier series at time t for freq w (in radians)
-fn calc_series(t: f64, w: f64, series: &Vec<(usize, f64)>) -> f64 {
-    series.iter().map(|(k, b)| b * (w*t*(*k as f64)).sin()).sum()
+fn calc_series(t: f64, w: f64, series: &Vec<HarmonicParam>) -> f64 {
+    series.iter().map(|HarmonicParam{k, amp}| *amp * (w*t*(*k as f64)).sin()).sum()
 }
 
-fn curve(freq: f64, series: &Vec<(usize, f64)>) -> Line {
+fn curve(freq: f64, series: &Vec<HarmonicParam>) -> Line {
     let wfreq = freq * 2.0 * PI;
     let n = 512;
     let dat = (0..n).map(|i| {
@@ -57,10 +39,10 @@ fn curve(freq: f64, series: &Vec<(usize, f64)>) -> Line {
         .name("Waveform")
 }
 
-fn harmonics(series: &Vec<(usize, f64)>) -> Vec<Line> {
-    series.iter().map(|(k, b)| {
+fn harmonics(series: &Vec<HarmonicParam>) -> Vec<Line> {
+    series.iter().map(|HarmonicParam{k, amp}| {
             let x = *k as f64 / 30.0;
-            let vs = vec!(Value::new(x, 0.0), Value::new(x, *b));
+            let vs = vec!(Value::new(x, 0.0), Value::new(x, *amp));
             Line::new(Values::from_values(vs))
                 .color(Color32::from_rgb(250,050,050))
                 .name("weight")
@@ -72,8 +54,9 @@ impl epi::App for App {
     //fn setup(&mut self, _ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>, _storage: Option<&dyn epi::Storage>) { }
     //fn save(&mut self, _storage: &mut dyn epi::Storage) { }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-        let Self { func, freq, n } = self;
-        let series = make_series(*func, *n);
+        let Self { func, freq, n, gen } = self;
+        gen.set_func(*func, *n);
+        let series = &gen.series;
         egui::TopBottomPanel::top("Fourier Fun").show(ctx, |ui| {
             ui.heading("Controls");
             ui.add(egui::Slider::new(freq, 1.0..=10.0).text("Freq"));
@@ -81,7 +64,8 @@ impl epi::App for App {
             ui.horizontal(|ui| {
                 ui.radio_value(func, Function::SIN, "SIN");
                 ui.radio_value(func, Function::TRI, "TRI");
-                ui.radio_value(func, Function::SAW, "SAW");
+                ui.radio_value(func, Function::SAWUP, "SAWUP");
+                ui.radio_value(func, Function::SAWDOWN, "SAWDOWN");
                 ui.radio_value(func, Function::SQUARE, "SQUARE");
             });
 
