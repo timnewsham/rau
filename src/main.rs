@@ -1,5 +1,6 @@
 
 mod additive;
+mod envelope;
 mod simple;
 mod ascii;
 mod file;
@@ -13,6 +14,7 @@ use crate::units::{Hz, Cent, Sec};
 use crate::additive::Gen as AddGen;
 use crate::simple::Gen as SimpGen;
 use crate::ascii::plot;
+use crate::envelope::Envelope;
 use crate::file::Tape;
 use crate::module::Rack;
 use crate::speaker::Speaker;
@@ -40,6 +42,21 @@ fn visual_check_add() {
     ascii::plot(&mut gen);
     gen.set_sine();
     ascii::plot(&mut gen);
+}
+
+fn visual_check_env() {
+    let sr = units::SAMPLE_RATE;
+    let mut env = Envelope::new(10.0/sr, 5.0/sr, 0.3, 10.0/sr);
+    env.set_gate(true);
+    for _ in (0..30) {
+        env.advance();
+        ascii::plot1(env.gen());
+    }
+    env.set_gate(false);
+    for _ in (0..20) {
+        env.advance();
+        ascii::plot1(env.gen());
+    }
 }
 
 // sox -r 44100 -e signed -B -b 16 -c 1 out.s16 out.wav
@@ -132,13 +149,16 @@ fn module_test() {
 }
 
 fn main() {
+/*
     make_file();
     make_sweep();
     make_sweep2();
     make_tune();
 
     module_test();
+*/
 
     //visual_check_add();
-    visual_check_simple();
+    //visual_check_simple();
+    visual_check_env();
 }

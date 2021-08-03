@@ -8,7 +8,7 @@ fn repeat(ch: char, n: i64) {
     }
 }
 
-fn plot1(x: f64) {
+pub fn plot1(x: f64) {
     let center = 40;
     let width = 74;
     let mut off = (((x * width as f64) / 2.0) as i64) + center;
@@ -42,7 +42,7 @@ pub fn plot(gen: &mut impl Gen) {
         }
         gen.advance();
     }
-    println!("Cost {:?}", gen.cost());
+    //println!("Cost {:?}", gen.cost());
     println!("");
 }
 
