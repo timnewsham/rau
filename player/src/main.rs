@@ -109,7 +109,9 @@ pub struct Speaker {
 impl Speaker {
     pub fn new() -> Self {
         // resample 44100->48000 (160/147 ratio), LP 70dB down with cutoff 80% of 22050 (17640Hz), 32-order FIR
+        println!("gen filter");
         let resampler = Resampler::new(160, 147, 70.0, 0.8, 32);
+        println!("setup au");
 
         let host = cpal::default_host();
         let dev = host.default_output_device().expect("cant get audio device");
@@ -145,8 +147,10 @@ fn main() {
 
     let path = "test.wav";
     let mut inp = File::open(path).expect("couldnt open file");
+    println!("read au");
     let (_hdr, dat) = wav::read(&mut inp).expect("couldn't read samples");
     if let BitDepth::Sixteen(vs) = dat {
+        println!("play au");
         for i in (0..vs.len()).step_by(2) {
             let left = (vs[i] as f32) / 32768.0;
             let right = (vs[i+1] as f32) / 32768.0;
