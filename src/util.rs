@@ -26,9 +26,8 @@ impl Module for Mult {
     fn set_input(&mut self, idx: usize, value: f64) {
         if idx == 0 { self.in1 = value; }
         if idx == 1 { self.in2 = value; }
-        self.out = self.in1 * self.in2;
     }
     fn advance(&mut self) {
-        // nothing
+        self.out = self.in1 * self.in2;
     }
 }
