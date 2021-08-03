@@ -1,5 +1,7 @@
 
 use std::collections::HashMap;
+use std::convert::Into;
+use crate::units::Samples;
 
 // Description of a terminals on a module
 // XXX for now
@@ -108,6 +110,21 @@ impl Rack {
                 out_cache.insert(k, out);
             }
         }
+    }
+
+    pub fn run(&mut self, time: impl Into<Samples>) {
+        let samples : Samples = time.into();
+        for _ in 0 .. samples.0 {
+            self.advance();
+        }
+    }
+
+    pub fn set_input(&mut self, mod_idx: usize, in_idx: usize, val: f64) -> Option<()> {
+        if mod_idx >= self.modules.len() {
+            return None;
+        }
+        self.modules[mod_idx].set_input(in_idx, val);
+        Some(())
     }
 }
 
