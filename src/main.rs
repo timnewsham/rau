@@ -4,6 +4,7 @@ mod envelope;
 mod simple;
 mod ascii;
 mod file;
+mod filt;
 mod gen;
 mod module;
 mod speaker;
@@ -17,6 +18,7 @@ use crate::simple::Gen as SimpGen;
 use crate::ascii::plot;
 use crate::envelope::Envelope;
 use crate::file::Tape;
+use crate::filt::{Filter, FiltType};
 use crate::module::{Rack, Module};
 use crate::speaker::Speaker;
 use crate::util::Mult;
@@ -59,6 +61,17 @@ fn visual_check_env() {
     for _ in 0..20 {
         env.advance();
         ascii::plot1(env.gen());
+    }
+}
+
+#[allow(dead_code)]
+fn visual_check_filt() {
+    let mut filt = Filter::new(FiltType::HP, Hz(5000.0), 1.0, 5.0);
+    filt.set_input(0, 1.0);
+    for _ in 0..20 {
+        filt.advance();
+        filt.set_input(0, 0.0);
+        ascii::plot1(filt.get_output(0).unwrap());
     }
 }
 
@@ -124,14 +137,15 @@ fn make_tune() {
     let dur = Sec(0.25);
     //let mut tape = Box::new(Tape::new("tune.s16"));
     let mut rack = Rack::new();
-    let gen = rack.add_module(Box::new(AddGen::new_sine(Hz(1.0))));
+    let gen = rack.add_module(Box::new(AddGen::new_saw_up(Hz(1.0), 16)));
     let env = rack.add_module(Box::new(Envelope::new(Sec(0.1), Sec(0.2), 0.1, Sec(0.1))));
     let tape = rack.add_module(Box::new(Speaker::new()));
     let mul = rack.add_module(Box::new(Mult::new()));
+    let filt = rack.add_module(Box::new(Filter::new(FiltType::LP, Hz(1000.0), 0.0, 0.1)));
     rack.add_wire(gen, "out", mul, "in1");
     rack.add_wire(env, "out", mul, "in2");
-    rack.add_wire(mul, "out", tape, "in");
-    //rack.add_wire(gen, "out", tape, "in");
+    rack.add_wire(mul, "out", filt, "in");
+    rack.add_wire(filt, "out", tape, "in"); 
 
     let notes = vec![
         7,5,3,5,
@@ -168,14 +182,14 @@ fn module_test() {
 }
 
 fn main() {
-    //make_file();
-    //make_sweep();
-    //make_sweep2();
-    make_tune();
-
-    //module_test();
-
     //visual_check_add();
     //visual_check_simple();
     //visual_check_env();
+    visual_check_filt();
+
+    //make_file();
+    //make_sweep();
+    //make_sweep2();
+    //module_test();
+    make_tune();
 }
