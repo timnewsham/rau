@@ -1,27 +1,15 @@
 
-mod additive;
-mod envelope;
-mod simple;
-mod ascii;
-mod file;
-mod filt;
-mod gen;
-mod module;
-mod speaker;
-mod units;
-mod util;
-
-use crate::gen::Gen;
-use crate::units::{Hz, Cent, Sec, Samples};
-use crate::additive::Gen as AddGen;
-use crate::simple::Gen as SimpGen;
-use crate::ascii::plot;
-use crate::envelope::Envelope;
-use crate::file::Tape;
-use crate::filt::{Filter, FiltType};
-use crate::module::{Rack, Module};
-use crate::speaker::Speaker;
-use crate::util::Mult;
+use rau::gen::Gen;
+use rau::units::{Hz, Cent, Sec, Samples};
+use rau::additive::Gen as AddGen;
+use rau::simple::Gen as SimpGen;
+use rau::ascii::{plot, plot1};
+use rau::envelope::Envelope;
+use rau::file::Tape;
+use rau::filt::{Filter, FiltType};
+use rau::module::{Rack, Module};
+use rau::speaker::Speaker;
+use rau::util::Mult;
 
 #[allow(dead_code)]
 fn visual_check_simple() {
@@ -44,9 +32,9 @@ fn visual_check_add() {
 
     // verify phase continuity
     gen.set_freq(Hz(0.5));
-    ascii::plot(&mut gen);
+    plot(&mut gen);
     gen.set_sine();
-    ascii::plot(&mut gen);
+    plot(&mut gen);
 }
 
 #[allow(dead_code)]
@@ -55,12 +43,12 @@ fn visual_check_env() {
     env.set_gate(true);
     for _ in 0..30 {
         env.advance();
-        ascii::plot1(env.gen());
+        plot1(env.gen());
     }
     env.set_gate(false);
     for _ in 0..20 {
         env.advance();
-        ascii::plot1(env.gen());
+        plot1(env.gen());
     }
 }
 
@@ -71,7 +59,7 @@ fn visual_check_filt() {
     for _ in 0..20 {
         filt.advance();
         filt.set_input(0, 0.0);
-        ascii::plot1(filt.get_output(0).unwrap());
+        plot1(filt.get_output(0).unwrap());
     }
 }
 
