@@ -1,7 +1,7 @@
 
-use rau::gen::Gen;
+use rau::gen::{Gen};
 use rau::units::{Hz, Cent, Sec, Samples};
-use rau::additive::Gen as AddGen;
+use rau::additive::{Gen as AddGen, Function};
 use rau::simple::Gen as SimpGen;
 use rau::ascii::{plot, plot1};
 use rau::envelope::Envelope;
@@ -13,27 +13,27 @@ use rau::util::Mult;
 
 #[allow(dead_code)]
 fn visual_check_simple() {
-    plot(&mut SimpGen::new_sine(Hz(2.0)));
-    plot(&mut SimpGen::new_triangle(Hz(2.0)));
-    plot(&mut SimpGen::new_saw_up(Hz(2.0)));
-    plot(&mut SimpGen::new_square(Hz(2.0)));
+    plot(&mut SimpGen::new(Function::SIN, Hz(2.0)));
+    plot(&mut SimpGen::new(Function::TRI, Hz(2.0)));
+    plot(&mut SimpGen::new(Function::SAWUP, Hz(2.0)));
+    plot(&mut SimpGen::new(Function::SQUARE, Hz(2.0)));
 }
 
 #[allow(dead_code)]
 fn visual_check_add() {
-    plot(&mut AddGen::new_sine(Hz(2.0)));
-    plot(&mut AddGen::new_triangle(Hz(2.0), 10));
-    plot(&mut AddGen::new_saw_up(Hz(2.0), 10));
-    plot(&mut AddGen::new_square(Hz(2.0), 10));
+    plot(&mut AddGen::new(Function::SIN, Hz(2.0), 1));
+    plot(&mut AddGen::new(Function::TRI, Hz(2.0), 10));
+    plot(&mut AddGen::new(Function::SAWUP, Hz(2.0), 10));
+    plot(&mut AddGen::new(Function::SQUARE, Hz(2.0), 10));
 
     // cost: 2
-    let mut gen = AddGen::new_saw_up(Hz(10000.0), 40);
+    let mut gen = AddGen::new(Function::SAWUP, Hz(10000.0), 40);
     debug_assert!(gen.cost() == 2);
 
     // verify phase continuity
     gen.set_freq(Hz(0.5));
     plot(&mut gen);
-    gen.set_sine();
+    gen.set_func(Function::SIN, 1);
     plot(&mut gen);
 }
 
@@ -66,8 +66,8 @@ fn visual_check_filt() {
 // sox -r 44100 -e signed -B -b 16 -c 1 out.s16 out.wav
 #[allow(dead_code)]
 fn make_file() {
-    let mut gen = AddGen::new_saw_up(Hz(1.0), 40);
-    //let mut gen = AddGen::new_sine(Hz(1.0));
+    let mut gen = AddGen::new(Function::SAWUP, Hz(1.0), 40);
+    //let mut gen = AddGen::new(Function::SIN, Hz(1.0), 1);
 
     let mut tape = Tape::new("out.s16");
     gen.set_freq(Hz(440.0));
@@ -79,9 +79,9 @@ fn make_file() {
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep.s16 sweep.wav
 #[allow(dead_code)]
 fn make_sweep() {
-    //let mut gen = AddGen::new_square(Hz(1.0), 40);
-    let mut gen = AddGen::new_saw_up(Hz(1.0), 40);
-    //let mut gen = AddGen::new_sine(Hz(1.0));
+    //let mut gen = AddGen::new(Function::SQUARE, Hz(1.0), 40);
+    let mut gen = AddGen::new(Function::SAWUP, Hz(1.0), 40);
+    //let mut gen = AddGen::new(Function::SIN, Hz(1.0), 1);
 
     // 5 octaves up
     let mut tape = Tape::new("sweep.s16");
@@ -101,9 +101,9 @@ fn make_sweep() {
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep2.s16 sweep2.wav
 #[allow(dead_code)]
 fn make_sweep2() {
-    //let mut gen = SimpGen::new_square(Hz(1.0));
-    let mut gen = SimpGen::new_saw_up(Hz(1.0));
-    //let mut gen = SimpGen::new_sine(Hz(1.0));
+    //let mut gen = SimpGen::new(Function::SQUARE, Hz(1.0));
+    let mut gen = SimpGen::new(Function::SAWUP, Hz(1.0));
+    //let mut gen = SimpGen::new(Function::SIN, Hz(1.0));
 
     // 5 octaves up
     let mut tape = Tape::new("sweep2.s16");
@@ -125,7 +125,7 @@ fn make_tune() {
     let dur = Sec(0.25);
     //let mut tape = Box::new(Tape::new("tune.s16"));
     let mut rack = Rack::new();
-    let gen = rack.add_module(Box::new(AddGen::new_saw_up(Hz(1.0), 16)));
+    let gen = rack.add_module(Box::new(AddGen::new(Function::SAWUP, Hz(1.0), 16)));
     let env = rack.add_module(Box::new(Envelope::new(Sec(0.1), Sec(0.2), 0.1, Sec(0.1))));
     let tape = rack.add_module(Box::new(Speaker::new()));
     let mul = rack.add_module(Box::new(Mult::new()));
@@ -153,12 +153,12 @@ fn make_tune() {
 
 #[allow(dead_code)]
 fn module_test() {
-    let mut lfo_ = Box::new(SimpGen::new_saw_up(Hz(4.0)));
+    let mut lfo_ = Box::new(SimpGen::new(Function::SAWUP, Hz(4.0)));
     lfo_.set_off(880.0);
     lfo_.set_amp(440.0);
 
     let mut rack = Rack::new();
-    let osc = rack.add_module(Box::new(AddGen::new_sine(Hz(440.0))));
+    let osc = rack.add_module(Box::new(AddGen::new(Function::SIN, Hz(440.0), 1)));
     let lfo = rack.add_module(lfo_);
     //let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
     let speaker = rack.add_module(Box::new(Speaker::new()));

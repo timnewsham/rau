@@ -4,11 +4,14 @@ use std::f64::consts::PI;
 use crate::units::{RadPS, MAXRADPS};
 use crate::gen;
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum Function{ SIN, TRI, SAWUP, SAWDOWN, SQUARE }
+
 // Param in a harmonic series
 // note: k is usually but need not be an integer.
-struct HarmonicParam {
-    k: f64,
-    amp: f64,
+pub struct HarmonicParam {
+    pub k: f64,
+    pub amp: f64,
 }
 
 // Easier name for (-1)^k
@@ -65,70 +68,42 @@ fn square_series(n: u64) -> Vec<HarmonicParam> {
 
 // An additive generator generates a signal as a sum of SIN waves.
 pub struct Gen {
+    pub series: Vec<HarmonicParam>,
+
     // invariant: 0 <= phase < 2*PI
     phase: f64, // in radians
 
     // invariant: 0 <= velocity <= PI
     velocity: RadPS,
+}
 
-    series: Vec<HarmonicParam>,
+fn get_series(typ: Function, n: u64) -> Vec<HarmonicParam> {
+    match typ {
+        Function::SIN => sine_series(),
+        Function::TRI => triangle_series(n),
+        Function::SAWUP => saw_up_series(n),
+        Function::SAWDOWN => saw_down_series(n),
+        Function::SQUARE => square_series(n),
+    }
 }
 
 #[allow(dead_code)]
 impl Gen {
-    // internal constructor
-    fn new_series(freq: impl Into<RadPS>, series: Vec<HarmonicParam>) -> Self {
-        // XXX truncate series to prevent aliasing
+    pub fn new(typ: Function, freq: impl Into<RadPS>, n: u64) -> Self {
         Self {
             phase: 0.0,
             velocity: freq.into(),
-            series: series,
+            series: get_series(typ, n),
         }
     }
 
-    pub fn new_sine(freq: impl Into<RadPS>) -> Self {
-        Self::new_series(freq, sine_series())
-    }
-
-    pub fn new_triangle(freq: impl Into<RadPS>, n: u64) -> Self {
-        Self::new_series(freq, triangle_series(n))
-    }
-
-    pub fn new_saw_up(freq: impl Into<RadPS>, n: u64) -> Self {
-        Self::new_series(freq, saw_up_series(n))
-    }
-
-    pub fn new_saw_down(freq: impl Into<RadPS>, n: u64) -> Self {
-        Self::new_series(freq, saw_down_series(n))
-    }
-
-    pub fn new_square(freq: impl Into<RadPS>, n: u64) -> Self {
-        Self::new_series(freq, square_series(n))
+    pub fn set_func(&mut self, typ: Function, n: u64) {
+        self.series = get_series(typ, n);
     }
 
     pub fn set_phase(&mut self, theta: f64) {
         debug_assert!(theta >= 0.0);
         self.phase = theta % (2.0 * PI);
-    }
-
-    pub fn set_sine(&mut self) {
-        self.series = sine_series();
-    }
-
-    pub fn set_triangle(&mut self, n: u64) {
-        self.series = triangle_series(n);
-    }
-
-    pub fn set_saw_up(&mut self, n: u64) {
-        self.series = saw_up_series(n);
-    }
-
-    pub fn set_saw_down(&mut self, n: u64) {
-        self.series = saw_down_series(n);
-    }
-
-    pub fn set_square(&mut self, n: u64) {
-        self.series = square_series(n);
     }
 
     pub fn cost(&self) -> usize {
@@ -166,6 +141,5 @@ impl gen::Gen for Gen {
     fn cost(&self) -> usize {
         Gen::cost(self)
     }
-
 }
 

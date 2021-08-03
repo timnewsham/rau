@@ -3,6 +3,7 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS};
 use crate::gen;
+pub use crate::additive::Function;
 
 // Simple function wave shape generator
 // Note: These will have low quality outputs at higher frequencies.
@@ -33,6 +34,10 @@ fn saw_up(phase: f64) -> f64 {
     if v <= 1.0 { v } else { v - 2.0 }
 }
 
+fn saw_down(phase: f64) -> f64 {
+    -saw_up(phase)
+}
+
 fn square(phase: f64) -> f64 {
     if phase <= PI { 1.0 } else { -1.0 }
 }
@@ -53,34 +58,27 @@ fn triangle(phase: f64) -> f64 {
     }
 }
 
+fn get_func(typ: Function) -> fn(f64)->f64 {
+    match typ {
+        Function::SIN => sine,
+        Function::TRI => triangle,
+        Function::SAWUP => saw_up,
+        Function::SAWDOWN => saw_down,
+        Function::SQUARE => square,
+    }
+}
+
 #[allow(dead_code)]
 impl Gen {
     // internal constructor
-    fn new_with_func(freq: impl Into<RadPS>, func: fn (f64) -> f64) -> Self {
-        // XXX truncate series to prevent aliasing
+    pub fn new(typ: Function, freq: impl Into<RadPS>) -> Self {
         Self {
             phase: 0.0,
             velocity: freq.into(),
             amp: 1.0,
             off: 0.0,
-            func: func,
+            func: get_func(typ),
         }
-    }
-
-    pub fn new_sine(freq: impl Into<RadPS>) -> Self {
-        Self::new_with_func(freq, sine)
-    }
-
-    pub fn new_saw_up(freq: impl Into<RadPS>) -> Self {
-        Self::new_with_func(freq, saw_up)
-    }
-
-    pub fn new_triangle(freq: impl Into<RadPS>) -> Self {
-        Self::new_with_func(freq, triangle)
-    }
-
-    pub fn new_square(freq: impl Into<RadPS>) -> Self {
-        Self::new_with_func(freq, square)
     }
 
     // XXX pulse with pulse width parameter?
@@ -97,20 +95,8 @@ impl Gen {
         self.amp = amp;
     }
 
-    pub fn set_sine(&mut self) {
-        self.func = sine;
-    }
-
-    pub fn set_saw_up(&mut self) {
-        self.func = saw_up;
-    }
-
-    pub fn set_triangle(&mut self) {
-        self.func = triangle;
-    }
-
-    pub fn set_square(&mut self) {
-        self.func = square;
+    pub fn set_func(&mut self, typ: Function) {
+        self.func = get_func(typ);
     }
 }
 
