@@ -3,15 +3,16 @@ use std::convert::Into;
 use crate::units::RadPS;
 use crate::module::*;
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum FiltType { LP, LowShelf, BP, HighShelf, HP }
 
 #[derive(Default, Debug)]
 pub struct Filter {
-    a1: f64,
-    a2: f64,
-    b0: f64,
-    b1: f64,
-    b2: f64,
+    pub a1: f64,
+    pub a2: f64,
+    pub b0: f64,
+    pub b1: f64,
+    pub b2: f64,
     delay1: f64,
     delay2: f64,
     inp: f64,
