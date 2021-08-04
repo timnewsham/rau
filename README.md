@@ -6,9 +6,9 @@ Goofing with audio sound generation in Rust.
 # Use
 
 There are two programs that test the current features. 
-The [src/bin/keyboard.rs][] example builds a small keyboard-based
+The [src/bin/keyboard.rs] example builds a small keyboard-based
 synthesizer. Run with `cargo run --release --bin keyboard`.
-The [src/bin/rau.rs][] example tests out various features as I
+The [src/bin/rau.rs] example tests out various features as I
 work on them. Most tests are commented out. Run with
 `cargo run`.
 
