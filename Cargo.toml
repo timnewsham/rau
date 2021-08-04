@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 cpal = "0.13.3"
+device_query = "0.2.8"
 
 [workspace]
-members = ["filtviz", "phaseviz", "genviz"]
+members = ["filtviz", "phaseviz", "genviz", "player"]

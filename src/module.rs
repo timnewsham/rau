@@ -126,5 +126,11 @@ impl Rack {
         self.modules[mod_idx].set_input(in_idx, val);
         Some(())
     }
+    pub fn get_output(&mut self, mod_idx: usize, out_idx: usize) -> Option<f64> {
+        if mod_idx >= self.modules.len() {
+            return None;
+        }
+        self.modules[mod_idx].get_output(out_idx)
+    }
 }
 
