@@ -40,13 +40,13 @@ fn visual_check_add() {
 #[allow(dead_code)]
 fn visual_check_env() {
     let mut env = Envelope::new(Samples(10), Samples(5), 0.3, Samples(10));
-    env.set_gate(true);
     for _ in 0..30 {
+        env.set_input(0, 1.0); // gate
         env.advance();
         plot1(env.gen());
     }
-    env.set_gate(false);
     for _ in 0..20 {
+        env.set_input(0, 0.0); // gate
         env.advance();
         plot1(env.gen());
     }
@@ -172,12 +172,12 @@ fn module_test() {
 fn main() {
     //visual_check_add();
     //visual_check_simple();
-    //visual_check_env();
-    visual_check_filt();
+    visual_check_env();
+    //visual_check_filt();
 
     //make_file();
     //make_sweep();
     //make_sweep2();
     //module_test();
-    make_tune();
+    //make_tune();
 }

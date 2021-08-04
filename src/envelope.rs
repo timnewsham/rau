@@ -14,6 +14,8 @@ pub struct Envelope {
 
     mode: EnvMode,
     val: f64,
+    gate: bool,
+    last_gate: bool,
 }
 
 // exponential decay factor to decay to 10% of starting value after t seconds.
@@ -44,21 +46,29 @@ impl Envelope {
             release: decay_factor(r),
             mode: EnvMode::Release,
             val: 0.0,
+            gate: false,
+            last_gate: false,
         }
     }
 
     pub fn gen(&self) -> f64 { self.val }
 
     pub fn set_gate(&mut self, g: bool) {
-        match g {
-            true => self.mode = EnvMode::Attack,
-            false => self.mode = EnvMode::Release,
-        };
+        self.gate = g;
     }
 }
 
 impl Module for Envelope {
     fn advance(&mut self) {
+        let last_gate = self.last_gate;
+        self.last_gate = self.gate;
+        if self.gate != last_gate {
+            match self.gate {
+                true => self.mode = EnvMode::Attack,
+                false => self.mode = EnvMode::Release,
+            };
+        }
+
         match self.mode {
         EnvMode::Attack =>
             if self.val < 1.0 {
@@ -86,7 +96,7 @@ impl Module for Envelope {
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
-        if idx == 0 { self.set_gate(value != 0.0) }
+        if idx == 0 { self.set_gate(value >= 0.5) }
     }
 }
 
