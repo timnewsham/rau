@@ -173,7 +173,7 @@ fn module_test() {
 }
 
 fn test_loader() {
-    let l = loader::Loader::new();
+    let mut l = loader::Loader::new();
     let _ = l.load("test.txt");
 }
 

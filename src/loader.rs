@@ -32,14 +32,38 @@ impl Loader {
     }
 
     pub fn register(&mut self, name: &'static str, f: ParseFn) {
+        //println!("registered {}", name);
         self.map.insert(name, f);
     }
 
-    fn proc_line(&self, lno: usize, ws: &Vec<&str>) {
-        println!("{} words: {:?}", lno+1, ws);
+    fn wire_from_cmd(&self, _args: &Vec<&str>) -> Result<(), &'static str> {
+        Err("not yet")
+    }
+    
+    fn proc_line(&self, fname: &str, lno: usize, ws: &Vec<&str>) {
+        //println!("{} words: {:?}", lno+1, ws);
+        if ws[0] == "wire" {
+            match self.wire_from_cmd(ws) {
+                Err(e) => println!("{}:{}: {}", fname, lno, e),
+                Ok(_) => (), //XXX do stuff!
+            };
+            return;
+        } 
+
+        if let Some(func) = self.map.get(ws[0]) {
+            match func(ws) {
+                Err(e) => println!("{}:{}: {}", fname, lno, e),
+                Ok(_) => println!("success for {:?}", ws), //XXX do stuff!
+            };
+            return;
+        }
+
+        println!("{}:{}: unrecognized module", fname, lno);
+        // ERR
     }
 
-    pub fn load(&self, fname: &str) -> Result<(), String> {
+    pub fn load(&mut self, fname: &str) -> Result<(), String> {
+        self.init();
         let file = File::open(fname).map_err(errstr)?;
         for (lno, line_or_err) in BufReader::new(file).lines().enumerate() {
             let line = line_or_err.map_err(errstr)?;
@@ -51,7 +75,7 @@ impl Loader {
                 continue;
             }
     
-            self.proc_line(lno + 1, &ws);
+            self.proc_line(fname, lno + 1, &ws);
         }
         Ok(())
     }
