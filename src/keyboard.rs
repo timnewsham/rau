@@ -67,6 +67,10 @@ fn new_keys(keys: &Vec<Keycode>, old: &Vec<Keycode>) -> Vec<Keycode> {
 
 impl Keyboard {
     pub fn new(poll: impl Into<Samples>) -> Self {
+        println!("  W E   T Y U   O P   ");
+        println!(" A S D F G H J K L ; '");
+        println!("");
+        println!("Z - oct down, X - oct up");
         println!("Hit [Esc] to exit");
         let Samples(time) = poll.into();
         Keyboard {
