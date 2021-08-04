@@ -127,13 +127,14 @@ fn make_tune() {
     let mut rack = Rack::new();
     let gen = rack.add_module(Box::new(AddGen::new(Function::SAWUP, Hz(1.0), 16)));
     let env = rack.add_module(Box::new(Envelope::new(Sec(0.1), Sec(0.2), 0.1, Sec(0.1))));
-    let tape = rack.add_module(Box::new(Speaker::new()));
+    let speaker = rack.add_module(Box::new(Speaker::new()));
     let mul = rack.add_module(Box::new(Mult::new()));
     let filt = rack.add_module(Box::new(Filter::new(FiltType::LP, Hz(1000.0), 0.0, 0.1)));
     rack.add_wire(gen, "out", mul, "in1");
     rack.add_wire(env, "out", mul, "in2");
     rack.add_wire(mul, "out", filt, "in");
-    rack.add_wire(filt, "out", tape, "in"); 
+    rack.add_wire(filt, "out", speaker, "left"); 
+    rack.add_wire(filt, "out", speaker, "right"); 
 
     let notes = vec![
         7,5,3,5,
@@ -165,19 +166,20 @@ fn module_test() {
 
     rack.add_wire(lfo, "out", osc, "freq");
     //rack.add_wire(osc, "out", tape, "in");
-    rack.add_wire(osc, "out", speaker, "in");
+    rack.add_wire(osc, "out", speaker, "left");
+    rack.add_wire(osc, "out", speaker, "right");
     for _ in 0..44100 { rack.advance(); }
 }
 
 fn main() {
     //visual_check_add();
     //visual_check_simple();
-    visual_check_env();
+    //visual_check_env();
     //visual_check_filt();
 
     //make_file();
     //make_sweep();
     //make_sweep2();
     //module_test();
-    //make_tune();
+    make_tune();
 }

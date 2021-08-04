@@ -10,7 +10,7 @@ The [src/bin/keyboard.rs](src/bin/keyboard.rs) example builds a small keyboard-b
 synthesizer. Run with `cargo run --release --bin keyboard`.
 The [src/bin/rau.rs](src/bin/rau.rs) example tests out various features as I
 work on them. Most tests are commented out. Run with
-`cargo run`.
+`cargo run --bin rau`.
 
 Running main with `cargo run` generates some ascii output and
 some `.s16` files. The generated files are a single channel of

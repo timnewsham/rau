@@ -10,8 +10,8 @@ use crate::module;
 
 pub struct Speaker {
     tx: mpsc::SyncSender<(f32, f32)>,
-    // XXX mono for now, stereo later
-    value: f32,
+    lvalue: f32,
+    rvalue: f32,
 
     #[allow(dead_code)]
     stream: cpal::Stream, // held until speaker is discarded
@@ -40,7 +40,7 @@ impl Speaker {
         let stream = dev.build_output_stream(&cfg, pump_func, err_func).expect("cant open audio");
         stream.play().unwrap();
 
-        Speaker{ tx: tx, value: 0.0, stream: stream }
+        Speaker{ tx: tx, rvalue: 0.0, lvalue: 0.0, stream: stream }
     }
 
     pub fn record(&mut self, gen: &mut impl Gen, time: impl Into<Samples>) {
@@ -55,7 +55,8 @@ impl Speaker {
 
 impl module::Module for Speaker {
     fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
-        (vec!["in".to_string()], 
+        (vec!["left".to_string(),
+              "right".to_string()], 
          vec![])
     }
 
@@ -64,12 +65,11 @@ impl module::Module for Speaker {
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
-        if idx == 0 {
-            self.value = value as f32;
-        }
+        if idx == 0 { self.lvalue = value as f32; }
+        if idx == 1 { self.rvalue = value as f32; }
     }
 
     fn advance(&mut self) {
-        self.tx.send((self.value, self.value)).unwrap();
+        self.tx.send((self.lvalue, self.rvalue)).unwrap();
     }
 }
