@@ -10,6 +10,7 @@ use rau::filt::{Filter, FiltType};
 use rau::module::{Rack, Module};
 use rau::speaker::Speaker;
 use rau::util::Mult;
+use rau::loader;
 
 #[allow(dead_code)]
 fn visual_check_simple() {
@@ -171,6 +172,11 @@ fn module_test() {
     for _ in 0..44100 { rack.advance(); }
 }
 
+fn test_loader() {
+    let l = loader::Loader::new();
+    let _ = l.load("test.txt");
+}
+
 fn main() {
     //visual_check_add();
     //visual_check_simple();
@@ -181,5 +187,6 @@ fn main() {
     //make_sweep();
     //make_sweep2();
     //module_test();
-    make_tune();
+    //make_tune();
+    test_loader();
 }

@@ -1,10 +1,24 @@
 
+use std::str::FromStr;
 use std::convert::Into;
-use crate::units::RadPS;
+use crate::units::{RadPS, Hz};
 use crate::module::*;
+use crate::loader::Loader;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum FiltType { LP, LowShelf, BP, HighShelf, HP }
+
+impl FromStr for FiltType {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "lp" { return Ok(FiltType::LP); }
+        if s == "lowshelf" { return Ok(FiltType::LowShelf); }
+        if s == "bp" { return Ok(FiltType::BP); }
+        if s == "highshelf" { return Ok(FiltType::HighShelf); }
+        if s == "hp" { return Ok(FiltType::HP); }
+        return Err("unrecognized filttype");
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct Filter {
@@ -20,6 +34,18 @@ pub struct Filter {
 }
 
 impl Filter {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 5 {
+            println!("usage: {} filttype freq gain q", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let typ: FiltType = args[1].parse().or(Err("cant parse filttype"))?;
+        let f: f64 = args[2].parse().or(Err("cant parse freq"))?;
+        let g: f64 = args[3].parse().or(Err("cant parse gain"))?;
+        let q: f64 = args[4].parse().or(Err("cant parse q"))?;
+        Ok( Box::new(Self::new(typ, Hz(f), g, q)) )
+    }
+
     pub fn new(typ: FiltType, freq: impl Into<RadPS>, gain: f64, q: f64) -> Self {
         // reference: https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
         #[allow(non_snake_case)]
@@ -114,5 +140,9 @@ impl Module for Filter {
         self.delay1 = delay0;
         //println!("{:?}", self);
     }
+}
+
+pub fn init(l: &mut Loader) {
+    l.register("filter", Filter::from_cmd);
 }
 

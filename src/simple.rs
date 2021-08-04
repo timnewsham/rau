@@ -1,9 +1,11 @@
 
 use std::convert::Into;
 use std::f64::consts::PI;
-use crate::units::{RadPS};
+use crate::units::{RadPS, Hz};
 use crate::gen;
+use crate::loader::Loader;
 pub use crate::additive::Function;
+use crate::module::*;
 
 // Simple function wave shape generator
 // Note: These will have low quality outputs at higher frequencies.
@@ -70,6 +72,16 @@ fn get_func(typ: Function) -> fn(f64)->f64 {
 
 #[allow(dead_code)]
 impl Gen {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 3 {
+            println!("usage: {} functype freq", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let func: Function = args[1].parse().or(Err("cant parse function"))?;
+        let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
+        Ok( Box::new(Self::new(func, Hz(freq))) )
+    }
+
     // internal constructor
     pub fn new(typ: Function, freq: impl Into<RadPS>) -> Self {
         Self {
@@ -118,3 +130,6 @@ impl gen::Gen for Gen {
     }
 }
 
+pub fn init(l: &mut Loader) {
+    l.register("osc2", Gen::from_cmd);
+}

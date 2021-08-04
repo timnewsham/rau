@@ -1,11 +1,27 @@
 
+use std::boxed::Box;
+use std::str::FromStr;
 use std::convert::Into;
 use std::f64::consts::PI;
-use crate::units::{RadPS, MAXRADPS};
+use crate::units::{RadPS, MAXRADPS, Hz};
 use crate::gen;
+use crate::module::*;
+use crate::loader::Loader;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Function{ SIN, TRI, SAWUP, SAWDOWN, SQUARE }
+
+impl FromStr for Function {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "sin" { return Ok(Function::SIN); }
+        if s == "tri" { return Ok(Function::TRI); }
+        if s == "sawup" { return Ok(Function::SAWUP); }
+        if s == "sawdown" { return Ok(Function::SAWDOWN); }
+        if s == "square" { return Ok(Function::SQUARE); }
+        return Err("unrecognized function");
+    }
+}
 
 // Param in a harmonic series
 pub struct HarmonicParam {
@@ -51,6 +67,17 @@ pub struct Gen {
 
 #[allow(dead_code)]
 impl Gen {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 4 {
+            println!("usage: {} functype freq order", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let func: Function = args[1].parse().or(Err("cant parse function"))?;
+        let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
+        let order: usize = args[3].parse().or(Err("cant parse order"))?;
+        Ok( Box::new(Self::new(func, Hz(freq), order)) ) 
+    }
+
     pub fn new(typ: Function, freq: impl Into<RadPS>, n: usize) -> Self {
         Self {
             phase: 0.0,
@@ -105,3 +132,6 @@ impl gen::Gen for Gen {
     }
 }
 
+pub fn init(l: &mut Loader) {
+    l.register("osc", Gen::from_cmd);
+}

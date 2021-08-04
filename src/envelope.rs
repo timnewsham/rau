@@ -1,7 +1,8 @@
 
 use std::convert::Into;
-use crate::units::Samples;
+use crate::units::{Samples, Sec};
 use crate::module::*;
+use crate::loader::Loader;
 
 #[derive(Debug)]
 enum EnvMode{ Attack, Decay, Release }
@@ -35,6 +36,18 @@ fn decay_factor(time: impl Into<Samples>) -> f64 {
 }
 
 impl Envelope {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 5 {
+            println!("usage: {} attack decay sustain release", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let a: f64 = args[1].parse().or(Err("cant parse attack"))?;
+        let d: f64 = args[2].parse().or(Err("cant parse decay"))?;
+        let s: f64 = args[3].parse().or(Err("cant parse sustain"))?;
+        let r: f64 = args[4].parse().or(Err("cant parse release"))?;
+        Ok( Box::new(Self::new(Sec(a), Sec(d), s, Sec(r))) )
+    }
+
     // a,d,r in seconds
     // s as a level from 0..=1.0
     pub fn new(a: impl Into<Samples>, d: impl Into<Samples>, s: f64, r: impl Into<Samples>) -> Self {
@@ -100,3 +113,6 @@ impl Module for Envelope {
     }
 }
 
+pub fn init(l: &mut Loader) {
+    l.register("envelope", Envelope::from_cmd);
+}

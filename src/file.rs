@@ -4,7 +4,8 @@ use std::io::{Write,BufWriter};
 use std::convert::Into;
 use crate::units::Samples;
 use crate::gen::Gen;
-use crate::module;
+use crate::module::*;
+use crate::loader::Loader;
 
 fn conv(x: f64) -> (u8, u8) {
     let val = (32767.0 * x.clamp(-1.0, 1.0)) as i16;
@@ -17,8 +18,17 @@ pub struct Tape {
 }
 
 impl Tape {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 2 {
+            println!("usage: {} fname", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let fname = args[1];
+        Ok( Box::new(Self::new(fname)) )
+    }
+
     pub fn new(fname: &str) -> Self {
-        let f = File::create(fname).expect("cant open");
+        let f = File::create(fname).expect("cant open"); // XXX more graceful error
         let buff = BufWriter::new(f);
         Tape {
             f: buff,
@@ -35,8 +45,8 @@ impl Tape {
     }
 }
 
-impl module::Module for Tape {
-    fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
+impl Module for Tape {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
         (vec!["in".to_string()], 
          vec![])
     }
@@ -55,3 +65,8 @@ impl module::Module for Tape {
     fn advance(&mut self) {
     }
 }
+
+pub fn init(l: &mut Loader) {
+    l.register("file", Tape::from_cmd);
+}
+

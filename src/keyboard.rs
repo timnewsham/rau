@@ -1,8 +1,9 @@
 
 use std::convert::Into;
 use device_query::{DeviceState, DeviceQuery, Keycode};
-use crate::units::{Samples, Hz, Cent};
+use crate::units::{Samples, Hz, Cent, Sec};
 use crate::module::*;
+use crate::loader::Loader;
 
 pub struct Keyboard {
     dev: DeviceState,
@@ -66,6 +67,15 @@ fn new_keys(keys: &Vec<Keycode>, old: &Vec<Keycode>) -> Vec<Keycode> {
 }
 
 impl Keyboard {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 2 {
+            println!("usage: {} polltime", args[0]);
+            return Err("wrong number of arguments");
+        }
+        let t: f64 = args[1].parse().or(Err("cant parse attack"))?;
+        Ok( Box::new(Self::new(Sec(t))) )
+    }
+
     pub fn new(poll: impl Into<Samples>) -> Self {
         println!("  W E   T Y U   O P   ");
         println!(" A S D F G H J K L ; '");
@@ -150,5 +160,9 @@ impl Module for Keyboard {
         }
         self.oldkeys = newkeys;
     }
+}
+
+pub fn init(l: &mut Loader) {
+    l.register("keyboard", Keyboard::from_cmd);
 }
 

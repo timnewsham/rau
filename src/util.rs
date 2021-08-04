@@ -1,4 +1,5 @@
 
+use crate::loader::Loader;
 use crate::module::*;
 
 pub struct Mult {
@@ -8,6 +9,14 @@ pub struct Mult {
 }
 
 impl Mult {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 1 {
+            println!("usage: {}", args[0]);
+            return Err("wrong number of arguments");
+        }
+        Ok( Box::new(Self::new()) )
+    }
+
     pub fn new() -> Self {
         Self{ in1: 0.0, in2: 0.0, out: 0.0 }
     }
@@ -30,4 +39,8 @@ impl Module for Mult {
     fn advance(&mut self) {
         self.out = self.in1 * self.in2;
     }
+}
+
+pub fn init(l: &mut Loader) {
+    l.register("mult", Mult::from_cmd);
 }

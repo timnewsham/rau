@@ -1,0 +1,58 @@
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+//use std::path::Path;
+use crate::module::*;
+
+type ParseFn = fn (&Vec<&str>) -> Result<Box<dyn Module>, &'static str>;
+type RegMap = HashMap<&'static str, ParseFn>;
+pub struct Loader {
+    map: RegMap
+}
+
+fn errstr(e: impl ToString) -> String {
+    e.to_string()
+}
+
+impl Loader {
+    pub fn new() -> Self {
+        Self{ map: HashMap::new() }
+    }
+
+    pub fn init(&mut self) {
+        crate::additive::init(self);
+        crate::envelope::init(self);
+        crate::file::init(self);
+        crate::filt::init(self);
+        crate::keyboard::init(self);
+        crate::simple::init(self);
+        crate::speaker::init(self);
+        crate::util::init(self);
+    }
+
+    pub fn register(&mut self, name: &'static str, f: ParseFn) {
+        self.map.insert(name, f);
+    }
+
+    fn proc_line(&self, lno: usize, ws: &Vec<&str>) {
+        println!("{} words: {:?}", lno+1, ws);
+    }
+
+    pub fn load(&self, fname: &str) -> Result<(), String> {
+        let file = File::open(fname).map_err(errstr)?;
+        for (lno, line_or_err) in BufReader::new(file).lines().enumerate() {
+            let line = line_or_err.map_err(errstr)?;
+            let mut ws: Vec<&str> = line.split_whitespace().collect();
+            if let Some(comment) = ws.iter().position(|s| s.starts_with("#")) {
+                ws.resize(comment, ""); // strip comments
+            }
+            if ws.len() == 0 { // skip empty lines
+                continue;
+            }
+    
+            self.proc_line(lno + 1, &ws);
+        }
+        Ok(())
+    }
+}

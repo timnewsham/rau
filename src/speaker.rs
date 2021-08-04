@@ -6,7 +6,8 @@ use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use crate::units::{Samples, SAMPLE_RATE};
 use crate::gen::Gen;
-use crate::module;
+use crate::module::*;
+use crate::loader::Loader;
 
 pub struct Speaker {
     tx: mpsc::SyncSender<(f32, f32)>,
@@ -19,6 +20,14 @@ pub struct Speaker {
 
 #[allow(dead_code)]
 impl Speaker {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+        if args.len() != 1 {
+            println!("usage: {}", args[0]);
+            return Err("wrong number of arguments");
+        }
+        Ok( Box::new(Self::new()) )
+    }
+
     pub fn new() -> Self {
         let host = cpal::default_host();
         let dev = host.default_output_device().expect("cant get audio device");
@@ -53,8 +62,8 @@ impl Speaker {
     }
 }
 
-impl module::Module for Speaker {
-    fn get_terminals(&self) -> (Vec<module::TerminalDescr>, Vec<module::TerminalDescr>) {
+impl Module for Speaker {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
         (vec!["left".to_string(),
               "right".to_string()], 
          vec![])
@@ -72,4 +81,8 @@ impl module::Module for Speaker {
     fn advance(&mut self) {
         self.tx.send((self.lvalue, self.rvalue)).unwrap();
     }
+}
+
+pub fn init(l: &mut Loader) {
+    l.register("speaker", Speaker::from_cmd);
 }
