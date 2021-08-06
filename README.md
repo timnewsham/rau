@@ -14,14 +14,14 @@ which specify the source of a signal (must be an output of a module) and the
 destination of the signal (must be an input of a module).
 
 Currently defined module types are:
-    * `envelope`
-    * `file`
-    * `filter`
-    * `keyboard`
-    * `mult`
-    * `osc`
-    * `osc2`
-    * `speaker`
+* `envelope`
+* `file`
+* `filter`
+* `keyboard`
+* `mult`
+* `osc`
+* `osc2`
+* `speaker`
 
 # Test programs
 
