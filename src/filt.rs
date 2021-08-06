@@ -34,7 +34,7 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 5 {
             println!("usage: {} filttype freq gain q", args[0]);
             return Err("wrong number of arguments");
@@ -43,7 +43,7 @@ impl Filter {
         let f: f64 = args[2].parse().or(Err("cant parse freq"))?;
         let g: f64 = args[3].parse().or(Err("cant parse gain"))?;
         let q: f64 = args[4].parse().or(Err("cant parse q"))?;
-        Ok( Box::new(Self::new(typ, Hz(f), g, q)) )
+        Ok( modref_new(Self::new(typ, Hz(f), g, q)) )
     }
 
     pub fn new(typ: FiltType, freq: impl Into<RadPS>, gain: f64, q: f64) -> Self {
@@ -133,12 +133,13 @@ impl Module for Filter {
         }
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         let delay0 = self.inp          - self.a1 * self.delay1 - self.a2 * self.delay2;
         self.val   = self.b0 * delay0  + self.b1 * self.delay1 + self.b2 * self.delay2;
         self.delay2 = self.delay1;
         self.delay1 = delay0;
         //println!("{:?}", self);
+        return true;
     }
 }
 

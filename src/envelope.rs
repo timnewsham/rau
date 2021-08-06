@@ -36,7 +36,7 @@ fn decay_factor(time: impl Into<Samples>) -> f64 {
 }
 
 impl Envelope {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 5 {
             println!("usage: {} attack decay sustain release", args[0]);
             return Err("wrong number of arguments");
@@ -45,7 +45,7 @@ impl Envelope {
         let d: f64 = args[2].parse().or(Err("cant parse decay"))?;
         let s: f64 = args[3].parse().or(Err("cant parse sustain"))?;
         let r: f64 = args[4].parse().or(Err("cant parse release"))?;
-        Ok( Box::new(Self::new(Sec(a), Sec(d), s, Sec(r))) )
+        Ok( modref_new(Self::new(Sec(a), Sec(d), s, Sec(r))) )
     }
 
     // a,d,r in seconds
@@ -72,7 +72,7 @@ impl Envelope {
 }
 
 impl Module for Envelope {
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         let last_gate = self.last_gate;
         self.last_gate = self.gate;
         if self.gate != last_gate {
@@ -97,6 +97,7 @@ impl Module for Envelope {
         EnvMode::Release => 
             self.val = self.val * self.release,
         };
+        return true;
     }
 
     fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {

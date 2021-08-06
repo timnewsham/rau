@@ -15,16 +15,17 @@ fn conv(x: f64) -> (u8, u8) {
 
 pub struct Tape {
     f: BufWriter<File>,
+    val: f64,
 }
 
 impl Tape {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 2 {
             println!("usage: {} fname", args[0]);
             return Err("wrong number of arguments");
         }
         let fname = args[1];
-        Ok( Box::new(Self::new(fname)) )
+        Ok( modref_new(Self::new(fname)) )
     }
 
     pub fn new(fname: &str) -> Self {
@@ -32,6 +33,7 @@ impl Tape {
         let buff = BufWriter::new(f);
         Tape {
             f: buff,
+            val: 0.0,
         }
     }
 
@@ -57,12 +59,14 @@ impl Module for Tape {
 
     fn set_input(&mut self, idx: usize, value: f64) {
         if idx == 0 {
-            let (a,b) = conv(value);
-            self.f.write(&[a, b]).expect("cant write");
+            self.val = value;
         }
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
+        let (a,b) = conv(self.val);
+        self.f.write(&[a, b]).expect("cant write");
+        return true;
     }
 }
 

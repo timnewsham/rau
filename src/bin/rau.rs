@@ -7,10 +7,10 @@ use rau::ascii::{plot, plot1};
 use rau::envelope::Envelope;
 use rau::file::Tape;
 use rau::filt::{Filter, FiltType};
-use rau::module::{Rack, Module};
 use rau::speaker::Speaker;
 use rau::util::Mult;
 use rau::loader;
+use rau::module::{Rack, Module, modref_new};
 
 #[allow(dead_code)]
 fn visual_check_simple() {
@@ -122,20 +122,22 @@ fn make_sweep2() {
 }
 
 #[allow(dead_code)]
-fn make_tune() {
+fn make_tune() -> Result<(), String> {
     let dur = Sec(0.25);
-    //let mut tape = Box::new(Tape::new("tune.s16"));
+    //let mut tape = modref_new(Tape::new("tune.s16"));
     let mut rack = Rack::new();
-    let gen = rack.add_module(Box::new(AddGen::new(Function::SAWUP, Hz(1.0), 16)));
-    let env = rack.add_module(Box::new(Envelope::new(Sec(0.1), Sec(0.2), 0.1, Sec(0.1))));
-    let speaker = rack.add_module(Box::new(Speaker::new()));
-    let mul = rack.add_module(Box::new(Mult::new()));
-    let filt = rack.add_module(Box::new(Filter::new(FiltType::LP, Hz(1000.0), 0.0, 0.1)));
-    rack.add_wire(gen, "out", mul, "in1");
-    rack.add_wire(env, "out", mul, "in2");
-    rack.add_wire(mul, "out", filt, "in");
-    rack.add_wire(filt, "out", speaker, "left"); 
-    rack.add_wire(filt, "out", speaker, "right"); 
+
+    rack.add_module("gen", modref_new(AddGen::new(Function::SAWUP, Hz(1.0), 16)))?;
+    rack.add_module("env", modref_new(Envelope::new(Sec(0.1), Sec(0.2), 0.1, Sec(0.1))))?;
+    rack.add_module("speaker", modref_new(Speaker::new()))?;
+    rack.add_module("mul", modref_new(Mult::new()))?;
+    rack.add_module("filt", modref_new(Filter::new(FiltType::LP, Hz(1000.0), 0.0, 0.1)))?;
+
+    rack.add_wire("gen", "out", "mul", "in1")?;
+    rack.add_wire("env", "out", "mul", "in2")?;
+    rack.add_wire("mul", "out", "filt", "in")?;
+    rack.add_wire("filt", "out", "speaker", "left")?;
+    rack.add_wire("filt", "out", "speaker", "right")?;
 
     let notes = vec![
         7,5,3,5,
@@ -147,41 +149,44 @@ fn make_tune() {
     for note in notes {
         // XXX modules should have typed inputs with auto-conversions
         let Hz(freq) = Cent(note as f64 * 100.0).into();
-        rack.set_input(gen, 0, freq); // freq
-        rack.set_input(env, 0, 1.0); // gate
+        rack.set_input("gen", "freq", freq)?; // freq
+        rack.set_input("env", "gate", 1.0)?; // gate
         rack.run(dur);
     }
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn module_test() {
-    let mut lfo_ = Box::new(SimpGen::new(Function::SAWUP, Hz(4.0)));
-    lfo_.set_off(880.0);
-    lfo_.set_amp(440.0);
+fn module_test() -> Result<(), String> {
+    let mut lfo = SimpGen::new(Function::SAWUP, Hz(4.0));
+    lfo.set_off(880.0);
+    lfo.set_amp(440.0);
 
     let mut rack = Rack::new();
-    let osc = rack.add_module(Box::new(AddGen::new(Function::SIN, Hz(440.0), 1)));
-    let lfo = rack.add_module(lfo_);
-    //let tape = rack.add_module(Box::new(Tape::new("modtest.s16")));
-    let speaker = rack.add_module(Box::new(Speaker::new()));
 
-    rack.add_wire(lfo, "out", osc, "freq");
-    //rack.add_wire(osc, "out", tape, "in");
-    rack.add_wire(osc, "out", speaker, "left");
-    rack.add_wire(osc, "out", speaker, "right");
+    rack.add_module("osc", modref_new(AddGen::new(Function::SIN, Hz(440.0), 1)))?;
+    rack.add_module("lfo", modref_new(lfo))?;
+    //rack.add_module("tape", modref_new(Tape::new("modtest.s16")))?;
+    rack.add_module("speaker", modref_new(Speaker::new()))?;
+
+    rack.add_wire("lfo", "out", "osc", "freq")?;
+    //rack.add_wire("osc", "out", "tape", "in")?;
+    rack.add_wire("osc", "out", "speaker", "left")?;
+    rack.add_wire("osc", "out", "speaker", "right")?;
     for _ in 0..44100 { rack.advance(); }
+    Ok(())
 }
 
 fn test_loader() -> Result<(), String> {
     let mut l = loader::Loader::new();
     let mut rack = l.load("test.txt")?;
-    loop {
-        // XXX find quit signal!
-        rack.run(Samples(128));
+    while rack.run(Samples(128)) {
+        continue;
     }
+    Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), String> {
     //visual_check_add();
     //visual_check_simple();
     //visual_check_env();
@@ -191,6 +196,9 @@ fn main() {
     //make_sweep();
     //make_sweep2();
     //module_test();
-    //make_tune();
-    let _ = test_loader();
+
+    //make_tune()?;
+    test_loader()?;
+
+    Ok(())
 }

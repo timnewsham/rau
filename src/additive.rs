@@ -1,5 +1,4 @@
 
-use std::boxed::Box;
 use std::str::FromStr;
 use std::convert::Into;
 use std::f64::consts::PI;
@@ -67,7 +66,7 @@ pub struct Gen {
 
 #[allow(dead_code)]
 impl Gen {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 4 {
             println!("usage: {} functype freq order", args[0]);
             return Err("wrong number of arguments");
@@ -75,7 +74,7 @@ impl Gen {
         let func: Function = args[1].parse().or(Err("cant parse function"))?;
         let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
         let order: usize = args[3].parse().or(Err("cant parse order"))?;
-        Ok( Box::new(Self::new(func, Hz(freq), order)) ) 
+        Ok( modref_new(Self::new(func, Hz(freq), order)) ) 
     }
 
     pub fn new(typ: Function, freq: impl Into<RadPS>, n: usize) -> Self {
@@ -111,8 +110,9 @@ impl gen::Gen for Gen {
         self.velocity = freq.into();
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+        return true;
     }
 
     fn gen(&self) -> f64 {

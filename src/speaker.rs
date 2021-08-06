@@ -20,12 +20,12 @@ pub struct Speaker {
 
 #[allow(dead_code)]
 impl Speaker {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 1 {
             println!("usage: {}", args[0]);
             return Err("wrong number of arguments");
         }
-        Ok( Box::new(Self::new()) )
+        Ok( modref_new(Self::new()) )
     }
 
     pub fn new() -> Self {
@@ -78,8 +78,9 @@ impl Module for Speaker {
         if idx == 1 { self.rvalue = value as f32; }
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         self.tx.send((self.lvalue, self.rvalue)).unwrap();
+        return true;
     }
 }
 

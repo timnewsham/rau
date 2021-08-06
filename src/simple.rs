@@ -72,14 +72,14 @@ fn get_func(typ: Function) -> fn(f64)->f64 {
 
 #[allow(dead_code)]
 impl Gen {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 3 {
             println!("usage: {} functype freq", args[0]);
             return Err("wrong number of arguments");
         }
         let func: Function = args[1].parse().or(Err("cant parse function"))?;
         let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
-        Ok( Box::new(Self::new(func, Hz(freq))) )
+        Ok( modref_new(Self::new(func, Hz(freq))) )
     }
 
     // internal constructor
@@ -117,8 +117,9 @@ impl gen::Gen for Gen {
         self.velocity = freq.into();
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+        return true;
     }
 
     fn gen(&self) -> f64 {

@@ -67,13 +67,13 @@ fn new_keys(keys: &Vec<Keycode>, old: &Vec<Keycode>) -> Vec<Keycode> {
 }
 
 impl Keyboard {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 2 {
             println!("usage: {} polltime", args[0]);
             return Err("wrong number of arguments");
         }
         let t: f64 = args[1].parse().or(Err("cant parse attack"))?;
-        Ok( Box::new(Self::new(Sec(t))) )
+        Ok( modref_new(Self::new(Sec(t))) )
     }
 
     pub fn new(poll: impl Into<Samples>) -> Self {
@@ -123,10 +123,10 @@ impl Module for Keyboard {
         unreachable!();
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         if self.timer != 0 {
             self.timer -= 1;
-            return;
+            return !self.quit;
         }
         self.timer = self.poll_time;
 
@@ -159,6 +159,8 @@ impl Module for Keyboard {
             }
         }
         self.oldkeys = newkeys;
+
+        return !self.quit;
     }
 }
 

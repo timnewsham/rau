@@ -9,12 +9,12 @@ pub struct Mult {
 }
 
 impl Mult {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<Box<dyn Module>, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
         if args.len() != 1 {
             println!("usage: {}", args[0]);
             return Err("wrong number of arguments");
         }
-        Ok( Box::new(Self::new()) )
+        Ok( modref_new(Self::new()) )
     }
 
     pub fn new() -> Self {
@@ -36,8 +36,9 @@ impl Module for Mult {
         if idx == 0 { self.in1 = value; }
         if idx == 1 { self.in2 = value; }
     }
-    fn advance(&mut self) {
+    fn advance(&mut self) -> bool {
         self.out = self.in1 * self.in2;
+        return true;
     }
 }
 
