@@ -1,0 +1,22 @@
+
+# the keyboard and speaker modules
+key keyboard 0.01
+speaker speaker
+
+# an oscillator and envelope generator
+osc osc sawup 1.0 16
+env envelope 0.05 0.2 0.4 0.5
+mult mult # to multiply envelope with oscillator
+
+# a filter, because why not
+filt filter lp 1000.0 0.0 0.1
+
+# a bunch of wires to hook everything up
+wire key:out osc:freq
+wire key:gate env:gate
+wire osc:out mult:in1
+wire env:out mult:in2
+wire mult:out filt:in
+wire filt:out speaker:left
+wire filt:out speaker:right
+

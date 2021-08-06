@@ -2,8 +2,28 @@
 
 Goofing with audio sound generation in Rust.
 
+# Loader
 
-# Use
+The [src/bin/load.rs](src/bin/load.rs) program loads a synth configuration from
+a config file and runs it.  Sample config files are in [configs](configs).
+The config file format is line-based with each line defining a module or a wire. 
+Module lines start with an arbitrary name for the module instance, then the
+module type, then any arguments used to instantiate the module. Wire lines start
+with `wire` and the contain `module:outputname` and `module:inputname` arguments
+which specify the source of a signal (must be an output of a module) and the 
+destination of the signal (must be an input of a module).
+
+Currently defined module types are:
+    * `envelope`
+    * `file`
+    * `filter`
+    * `keyboard`
+    * `mult`
+    * `osc`
+    * `osc2`
+    * `speaker`
+
+# Test programs
 
 There are two programs that test the current features. 
 The [src/bin/keyboard.rs](src/bin/keyboard.rs) example builds a small keyboard-based
