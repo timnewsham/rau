@@ -15,6 +15,10 @@ pub struct TerminalDescr2 {
     max: f64,
 }
 
+// XXX TODO: quit signal global to the rack, that modules can connect to?
+// XXX TODO: better typing of module IDs
+// XXX TODO: include a map of module names to modules in the rack?
+
 /*
  * Interface to modules with inputs and outputs and a sample-based clock.
  */

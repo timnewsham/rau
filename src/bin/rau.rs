@@ -172,9 +172,13 @@ fn module_test() {
     for _ in 0..44100 { rack.advance(); }
 }
 
-fn test_loader() {
+fn test_loader() -> Result<(), String> {
     let mut l = loader::Loader::new();
-    let _ = l.load("test.txt");
+    let mut rack = l.load("test.txt")?;
+    loop {
+        // XXX find quit signal!
+        rack.run(Samples(128));
+    }
 }
 
 fn main() {
@@ -188,5 +192,5 @@ fn main() {
     //make_sweep2();
     //module_test();
     //make_tune();
-    test_loader();
+    let _ = test_loader();
 }
