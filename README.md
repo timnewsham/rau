@@ -6,6 +6,8 @@ Goofing with audio sound generation in Rust.
 
 The [src/bin/load.rs](src/bin/load.rs) program loads a synth configuration from
 a config file and runs it.  Sample config files are in [configs](configs).
+Run as `cargo run --bin load configs/simple.rau`.
+
 The config file format is line-based with each line defining a module or a wire. 
 Module lines start with an arbitrary name for the module instance, then the
 module type, then any arguments used to instantiate the module. Wire lines start
