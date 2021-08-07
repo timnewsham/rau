@@ -9,14 +9,14 @@ use crate::loader::Loader;
 pub enum FiltType { LP, LowShelf, BP, HighShelf, HP }
 
 impl FromStr for FiltType {
-    type Err = &'static str;
+    type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "lp" { return Ok(FiltType::LP); }
         if s == "lowshelf" { return Ok(FiltType::LowShelf); }
         if s == "bp" { return Ok(FiltType::BP); }
         if s == "highshelf" { return Ok(FiltType::HighShelf); }
         if s == "hp" { return Ok(FiltType::HP); }
-        return Err("unrecognized filttype");
+        return Err(format!("unrecognized filttype '{}'", s));
     }
 }
 
@@ -34,15 +34,14 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 5 {
-            println!("usage: {} filttype freq gain q", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} filttype freq gain q", args[0]));
         }
-        let typ: FiltType = args[1].parse().or(Err("cant parse filttype"))?;
-        let f: f64 = args[2].parse().or(Err("cant parse freq"))?;
-        let g: f64 = args[3].parse().or(Err("cant parse gain"))?;
-        let q: f64 = args[4].parse().or(Err("cant parse q"))?;
+        let typ = parse::<FiltType>("filttype", args[1])?;
+        let f = parse::<f64>("freq", args[2])?;
+        let g = parse::<f64>("gain", args[3])?;
+        let q = parse::<f64>("q", args[4])?;
         Ok( modref_new(Self::new(typ, Hz(f), g, q)) )
     }
 

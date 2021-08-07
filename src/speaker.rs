@@ -20,10 +20,9 @@ pub struct Speaker {
 
 #[allow(dead_code)]
 impl Speaker {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 1 {
-            println!("usage: {}", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {}", args[0]));
         }
         Ok( modref_new(Self::new()) )
     }

@@ -72,13 +72,12 @@ fn get_func(typ: Function) -> fn(f64)->f64 {
 
 #[allow(dead_code)]
 impl Gen {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 3 {
-            println!("usage: {} functype freq", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} functype freq", args[0]));
         }
-        let func: Function = args[1].parse().or(Err("cant parse function"))?;
-        let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
+        let func = parse::<Function>("functype", args[1])?;
+        let freq = parse::<f64>("freq", args[2])?;
         Ok( modref_new(Self::new(func, Hz(freq))) )
     }
 

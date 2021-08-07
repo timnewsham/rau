@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use crate::module::*;
 
-type ParseFn = fn (&Vec<&str>) -> Result<ModRef, &'static str>;
+type ParseFn = fn (&Vec<&str>) -> Result<ModRef, String>;
 type RegMap = HashMap<&'static str, ParseFn>;
 pub struct Loader {
     map: RegMap,
@@ -14,10 +14,10 @@ fn errstr(e: impl ToString) -> String {
     e.to_string()
 }
 
-fn parse_terminal<'a>(s: &'a str) -> Result<(&'a str, &'a str), String> {
+fn parse_terminal<'a>(name: &str, s: &'a str) -> Result<(&'a str, &'a str), String> {
     let v: Vec<&str> = s.splitn(2, ":").collect();
     if v.len() != 2 {
-        Err(format!("'{}' bad terminal format", s))
+        Err(format!("bad terminal format for wire {} '{}'", name, s))
     } else {
         Ok((v[0], v[1]))
     }
@@ -49,8 +49,8 @@ impl Loader {
         if args.len() != 3 {
             return Err(format!("wire needs two args"));
         }
-        let (mod1,out) = parse_terminal(args[1])?;
-        let (mod2,inp) = parse_terminal(args[2])?;
+        let (mod1,out) = parse_terminal("source", args[1])?;
+        let (mod2,inp) = parse_terminal("dest", args[2])?;
         rack.add_wire(mod1, out, mod2, inp)
     }
 

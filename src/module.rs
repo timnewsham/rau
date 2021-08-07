@@ -1,4 +1,5 @@
 
+use std::str::FromStr;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -157,5 +158,9 @@ impl Rack {
         let idx = output_idx(m, mod_name, out_name)?;
         m.borrow().get_output(idx).ok_or(format!("can't get {}", out_name))
     }
+}
+
+pub fn parse<T: FromStr>(name: &str, val: &str) -> Result<T, String> {
+    val.parse().map_err(|_| format!("can't parse {} '{}", name, val))
 }
 

@@ -19,10 +19,9 @@ pub struct Tape {
 }
 
 impl Tape {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 2 {
-            println!("usage: {} fname", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} fname", args[0]));
         }
         let fname = args[1];
         Ok( modref_new(Self::new(fname)) )

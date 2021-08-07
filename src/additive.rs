@@ -11,14 +11,14 @@ use crate::loader::Loader;
 pub enum Function{ SIN, TRI, SAWUP, SAWDOWN, SQUARE }
 
 impl FromStr for Function {
-    type Err = &'static str;
+    type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "sin" { return Ok(Function::SIN); }
         if s == "tri" { return Ok(Function::TRI); }
         if s == "sawup" { return Ok(Function::SAWUP); }
         if s == "sawdown" { return Ok(Function::SAWDOWN); }
         if s == "square" { return Ok(Function::SQUARE); }
-        return Err("unrecognized function");
+        return Err(format!("unrecognized function '{}'", s));
     }
 }
 
@@ -66,14 +66,13 @@ pub struct Gen {
 
 #[allow(dead_code)]
 impl Gen {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 4 {
-            println!("usage: {} functype freq order", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} functype freq order", args[0]));
         }
-        let func: Function = args[1].parse().or(Err("cant parse function"))?;
-        let freq: f64 = args[2].parse().or(Err("cant parse freq"))?;
-        let order: usize = args[3].parse().or(Err("cant parse order"))?;
+        let func = parse::<Function>("functype", args[1])?;
+        let freq = parse::<f64>("freq", args[2])?;
+        let order = parse::<usize>("order", args[3])?;
         Ok( modref_new(Self::new(func, Hz(freq), order)) ) 
     }
 

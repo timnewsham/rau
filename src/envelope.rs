@@ -36,15 +36,14 @@ fn decay_factor(time: impl Into<Samples>) -> f64 {
 }
 
 impl Envelope {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 5 {
-            println!("usage: {} attack decay sustain release", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} attack decay sustain release", args[0]));
         }
-        let a: f64 = args[1].parse().or(Err("cant parse attack"))?;
-        let d: f64 = args[2].parse().or(Err("cant parse decay"))?;
-        let s: f64 = args[3].parse().or(Err("cant parse sustain"))?;
-        let r: f64 = args[4].parse().or(Err("cant parse release"))?;
+        let a = parse::<f64>("attack", args[1])?;
+        let d = parse::<f64>("decay", args[2])?;
+        let s = parse::<f64>("sustain", args[3])?;
+        let r = parse::<f64>("release", args[4])?;
         Ok( modref_new(Self::new(Sec(a), Sec(d), s, Sec(r))) )
     }
 

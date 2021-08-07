@@ -67,12 +67,11 @@ fn new_keys(keys: &Vec<Keycode>, old: &Vec<Keycode>) -> Vec<Keycode> {
 }
 
 impl Keyboard {
-    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, &'static str> {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 2 {
-            println!("usage: {} polltime", args[0]);
-            return Err("wrong number of arguments");
+            return Err(format!("usage: {} polltime", args[0]));
         }
-        let t: f64 = args[1].parse().or(Err("cant parse attack"))?;
+        let t = parse::<f64>("polltime", args[1])?;
         Ok( modref_new(Self::new(Sec(t))) )
     }
 
