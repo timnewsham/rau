@@ -1,7 +1,7 @@
 
 use std::convert::Into;
 use std::f64::consts::PI;
-use crate::units::{RadPS, Hz};
+use crate::units::{RadPS, Hz, MAXHZ};
 use crate::gen;
 use crate::loader::Loader;
 pub use crate::additive::Function;
@@ -117,9 +117,7 @@ impl gen::Gen for Gen {
     }
 
     fn advance(&mut self) -> bool {
-        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
-        self.val = self.off + self.amp * (self.func)(self.phase);
-        return true;
+        Module::advance(self)
     }
 
     fn gen(&self) -> f64 {
@@ -128,6 +126,30 @@ impl gen::Gen for Gen {
 
     fn cost(&self) -> usize {
         1
+    }
+}
+
+impl Module for Gen {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
+        (vec!["freq".to_string()],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 { return Some(self.val) };
+        None
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        if idx == 0 {
+            self.velocity = Hz(value.clamp(0.0, MAXHZ)).into();
+        }
+    }
+
+    fn advance(&mut self) -> bool {
+        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+        self.val = self.off + self.amp * (self.func)(self.phase);
+        return true;
     }
 }
 

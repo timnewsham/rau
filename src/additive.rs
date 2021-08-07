@@ -2,7 +2,7 @@
 use std::str::FromStr;
 use std::convert::Into;
 use std::f64::consts::PI;
-use crate::units::{RadPS, MAXRADPS, Hz};
+use crate::units::{RadPS, MAXRADPS, Hz, MAXHZ};
 use crate::gen;
 use crate::module::*;
 use crate::loader::Loader;
@@ -110,18 +110,7 @@ impl gen::Gen for Gen {
     }
 
     fn advance(&mut self) -> bool {
-        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
-
-        let mut x = 0.0;
-        for param in self.series.iter() {
-            // disallow aliasing
-            // XXX would be better to trim series once instead of each gen
-            if param.k as f64 * self.velocity.0 <= MAXRADPS {
-                x += param.amp * (param.k as f64 * self.phase).sin();
-            }
-        }
-        self.val = x;
-        return true;
+        Module::advance(self)
     }
 
     fn gen(&self) -> f64 {
@@ -130,6 +119,37 @@ impl gen::Gen for Gen {
 
     fn cost(&self) -> usize {
         Gen::cost(self)
+    }
+}
+
+impl Module for Gen {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
+        (vec!["freq".to_string()],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 { return Some(self.val); }
+        None
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        if idx == 0 {
+            self.velocity = Hz(value.clamp(0.0, MAXHZ)).into();
+        }
+    }
+
+    fn advance(&mut self) -> bool {
+        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+
+        let mut x = 0.0;
+        for param in self.series.iter() {
+            if param.k as f64 * self.velocity.0 <= MAXRADPS { // disallow aliasing
+                x += param.amp * (param.k as f64 * self.phase).sin();
+            }
+        }
+        self.val = x;
+        return true;
     }
 }
 
