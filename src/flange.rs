@@ -35,7 +35,7 @@ impl Flange {
     // width is fraction, at 0.99, lfo sweeps full range from 0 to MAXDELAY (centered at manual)
     pub fn new(func: Function, freq: impl Into<RadPS>, manual: f64, width: f64, dry: f64, fb: f64) -> Self {
         assert!(0.0 < manual && manual < 1.0);
-        assert!(0.0 < width && width < 1.0); // XXX allow negative width for inverting phase of lfo?
+        assert!(0.0 < width.abs() && width.abs() < 1.0); // XXX allow negative width for inverting phase of lfo?
 
         let lfo = Osc::new(func, freq);
         let delay = Delay::new(Sec(MAXDELAY), dry, fb);
@@ -58,7 +58,7 @@ impl Flange {
     }
 
     pub fn set_width(&mut self, width: f64) {
-        assert!(0.0 < width && width < 1.0);
+        assert!(0.0 < width.abs() && width.abs() < 1.0);
         self.width = width;
     }
 
@@ -79,7 +79,7 @@ impl Flange {
         let m = 0.5 * self.manual * MAXDELAY;
         let w = m * self.width;
         let delay = m + lfo * w; // always between 0 and MAXDELAY
-        //assert!(0.0 < delay && delay < MAXDELAY);
+        assert!(0.0 < delay && delay < MAXDELAY);
 
         self.delay.set_delay(Sec(delay));
         self.val = self.delay.advance();

@@ -100,7 +100,7 @@ impl Phaser {
         let m = 0.5 * self.manual * MAXG;
         let w = m * self.width;
         let g4 = m + lfo * w;
-        //assert!(0.0 < g4 && g4 < MAXG);
+        assert!(0.0 < g4 && g4 < MAXG);
 
         self.f1.set_g(g4 / 8.0);
         self.f2.set_g(g4 / 4.0);

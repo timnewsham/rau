@@ -1,0 +1,22 @@
+
+key keyboard 0.01
+speaker speaker
+
+osc osc sawup 1.0 16
+env envelope 0.05 0.2 0.4 0.5
+envmult mult
+
+# note: negative "width" inverts the lfo's direction
+flange1 flange sin 0.5 0.5 0.7 0.5 0.4
+flange2 flange sin 0.5 0.5 -0.7 0.5 0.4
+
+wire key:out osc:freq
+wire key:gate env:gate
+wire env:out envmult:in1
+wire osc:out envmult:in2
+wire envmult:out flange1:in
+wire envmult:out flange2:in
+
+wire flange1:out speaker:left
+wire flange2:out speaker:right
+
