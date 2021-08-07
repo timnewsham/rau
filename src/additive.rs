@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS, MAXRADPS, Hz, MAXHZ};
-use crate::gen;
 use crate::module::*;
 use crate::loader::Loader;
 
@@ -83,6 +82,10 @@ impl Gen {
         }
     }
 
+    pub fn set_freq(&mut self, freq: impl Into<RadPS>) {
+        self.velocity = freq.into();
+    }
+
     pub fn set_func(&mut self, typ: Function, n: usize) {
         self.series = get_series(typ, n);
     }
@@ -100,25 +103,6 @@ impl Gen {
             }
         }
         cost
-    }
-}
-
-// XXX get rid of gen::Gen
-impl gen::Gen for Gen {
-    fn set_freq(&mut self, freq: impl Into<RadPS>) {
-        self.velocity = freq.into();
-    }
-
-    fn advance(&mut self) -> bool {
-        Module::advance(self)
-    }
-
-    fn gen(&self) -> f64 {
-        self.val
-    }
-
-    fn cost(&self) -> usize {
-        Gen::cost(self)
     }
 }
 

@@ -1,5 +1,4 @@
 
-use rau::gen::{Gen};
 use rau::units::{Hz, Cent, Sec, Samples};
 use rau::additive::{Gen as AddGen, Function};
 use rau::simple::Gen as SimpGen;
@@ -13,19 +12,20 @@ use rau::loader;
 use rau::module::{Rack, Module, modref_new};
 
 #[allow(dead_code)]
-fn visual_check_simple() {
-    plot(&mut SimpGen::new(Function::SIN, Hz(2.0)));
-    plot(&mut SimpGen::new(Function::TRI, Hz(2.0)));
-    plot(&mut SimpGen::new(Function::SAWUP, Hz(2.0)));
-    plot(&mut SimpGen::new(Function::SQUARE, Hz(2.0)));
+fn visual_check_simple() -> Result<(), String> {
+    plot(&mut SimpGen::new(Function::SIN, Hz(2.0)), "out")?;
+    plot(&mut SimpGen::new(Function::TRI, Hz(2.0)), "out")?;
+    plot(&mut SimpGen::new(Function::SAWUP, Hz(2.0)), "out")?;
+    plot(&mut SimpGen::new(Function::SQUARE, Hz(2.0)), "out")?;
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn visual_check_add() {
-    plot(&mut AddGen::new(Function::SIN, Hz(2.0), 1));
-    plot(&mut AddGen::new(Function::TRI, Hz(2.0), 10));
-    plot(&mut AddGen::new(Function::SAWUP, Hz(2.0), 10));
-    plot(&mut AddGen::new(Function::SQUARE, Hz(2.0), 10));
+fn visual_check_add() -> Result<(), String> {
+    plot(&mut AddGen::new(Function::SIN, Hz(2.0), 1), "out")?;
+    plot(&mut AddGen::new(Function::TRI, Hz(2.0), 10), "out")?;
+    plot(&mut AddGen::new(Function::SAWUP, Hz(2.0), 10), "out")?;
+    plot(&mut AddGen::new(Function::SQUARE, Hz(2.0), 10), "out")?;
 
     // cost: 2
     let mut gen = AddGen::new(Function::SAWUP, Hz(10000.0), 40);
@@ -33,53 +33,59 @@ fn visual_check_add() {
 
     // verify phase continuity
     gen.set_freq(Hz(0.5));
-    plot(&mut gen);
+    plot(&mut gen, "out")?;
     gen.set_func(Function::SIN, 1);
-    plot(&mut gen);
+    plot(&mut gen, "out")?;
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn visual_check_env() {
+fn visual_check_env() -> Result<(), String> {
     let mut env = Envelope::new(Samples(10), Samples(5), 0.3, Samples(10));
     for _ in 0..30 {
-        env.set_input(0, 1.0); // gate
+        env.set_named_input("env", "gate", 1.0)?;
         env.advance();
-        plot1(env.gen());
+        let val = env.get_named_output("env", "out")?;
+        plot1(val);
     }
     for _ in 0..20 {
-        env.set_input(0, 0.0); // gate
+        env.set_named_input("env", "gate", 0.0)?;
         env.advance();
-        plot1(env.gen());
+        let val = env.get_named_output("env", "out")?;
+        plot1(val);
     }
+    Ok(())
 }
 
 #[allow(dead_code)]
-fn visual_check_filt() {
+fn visual_check_filt() -> Result<(), String> {
     let mut filt = Filter::new(FiltType::HP, Hz(5000.0), 1.0, 5.0);
     filt.set_input(0, 1.0);
     for _ in 0..20 {
         filt.advance();
         filt.set_input(0, 0.0);
-        plot1(filt.get_output(0).unwrap());
+        plot1(filt.get_output(0).ok_or("cant get output")?);
     }
+    Ok(())
 }
 
 // sox -r 44100 -e signed -B -b 16 -c 1 out.s16 out.wav
 #[allow(dead_code)]
-fn make_file() {
+fn make_file() -> Result<(), String> {
     let mut gen = AddGen::new(Function::SAWUP, Hz(1.0), 40);
     //let mut gen = AddGen::new(Function::SIN, Hz(1.0), 1);
 
     let mut tape = Tape::new("out.s16");
     gen.set_freq(Hz(440.0));
-    tape.record(&mut gen, Sec(0.25));
+    tape.record(&mut gen, "out", Sec(0.25))?;
     gen.set_freq(Hz(880.0));
-    tape.record(&mut gen, Sec(0.25));
+    tape.record(&mut gen, "out", Sec(0.25))?;
+    Ok(())
 }
 
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep.s16 sweep.wav
 #[allow(dead_code)]
-fn make_sweep() {
+fn make_sweep() -> Result<(), String> {
     //let mut gen = AddGen::new(Function::SQUARE, Hz(1.0), 40);
     let mut gen = AddGen::new(Function::SAWUP, Hz(1.0), 40);
     //let mut gen = AddGen::new(Function::SIN, Hz(1.0), 1);
@@ -89,19 +95,20 @@ fn make_sweep() {
     for cent in 0..(1200 * 5) {
         gen.set_freq(Cent(cent as f64));
         // 0.5 seconds per octave
-        tape.record(&mut gen, Sec(0.5/1200.0));
+        tape.record(&mut gen, "out", Sec(0.5/1200.0))?;
     }
     // 5 octaves down
     for cent in 0..(1200 * 5) {
         gen.set_freq(Cent((1200*5 - cent) as f64));
         // 0.5 seconds per octave
-        tape.record(&mut gen, Sec(0.5/1200.0));
+        tape.record(&mut gen, "out", Sec(0.5/1200.0))?;
     }
+    Ok(())
 }
 
 // sox -r 44100 -e signed -B -b 16 -c 1 sweep2.s16 sweep2.wav
 #[allow(dead_code)]
-fn make_sweep2() {
+fn make_sweep2() -> Result<(), String> {
     //let mut gen = SimpGen::new(Function::SQUARE, Hz(1.0));
     let mut gen = SimpGen::new(Function::SAWUP, Hz(1.0));
     //let mut gen = SimpGen::new(Function::SIN, Hz(1.0));
@@ -109,16 +116,21 @@ fn make_sweep2() {
     // 5 octaves up
     let mut tape = Tape::new("sweep2.s16");
     for cent in 0..(1200 * 5) {
+        //let Hz(freq) = Cent(cent as f64).into();
+        //gen.set_named_input("gen", "freq", freq).unwrap();
         gen.set_freq(Cent(cent as f64));
         // 0.5 seconds per octave
-        tape.record(&mut gen, Sec(0.5/1200.0));
+        tape.record(&mut gen, "out", Sec(0.5/1200.0))?;
     }
     // 5 octaves down
     for cent in 0..(1200 * 5) {
+        //let Hz(freq) = Cent((1200*5 - cent) as f64).into();
+        //gen.set_named_input("gen", "freq", freq)?;
         gen.set_freq(Cent((1200*5 - cent) as f64));
         // 0.5 seconds per octave
-        tape.record(&mut gen, Sec(0.5/1200.0));
+        tape.record(&mut gen, "out", Sec(0.5/1200.0))?;
     }
+    Ok(())
 }
 
 #[allow(dead_code)]
@@ -177,6 +189,7 @@ fn module_test() -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn test_loader() -> Result<(), String> {
     let mut l = loader::Loader::new();
     let mut rack = l.load("test.txt")?;
@@ -187,18 +200,18 @@ fn test_loader() -> Result<(), String> {
 }
 
 fn main() -> Result<(), String> {
-    //visual_check_add();
-    //visual_check_simple();
-    //visual_check_env();
-    //visual_check_filt();
+    visual_check_add()?;
+    visual_check_simple()?;
+    visual_check_env()?;
+    visual_check_filt()?;
 
-    //make_file();
-    //make_sweep();
-    //make_sweep2();
-    //module_test();
+    make_file()?;
+    make_sweep()?;
+    make_sweep2()?;
+    module_test()?;
 
-    //make_tune()?;
-    test_loader()?;
+    make_tune()?;
+    //test_loader()?;
 
     Ok(())
 }

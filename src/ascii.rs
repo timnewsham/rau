@@ -1,6 +1,6 @@
 
 use crate::units::SAMPLE_RATE;
-use crate::gen::Gen;
+use crate::module::*;
 
 fn repeat(ch: char, n: i64) {
     for _ in 0..n {
@@ -35,14 +35,17 @@ pub fn plot1(x: f64) {
 
 const DECIMATE : i64 = 44100 / 30;
 
-pub fn plot(gen: &mut impl Gen) {
+pub fn plot(m: &mut impl Module, outp: &str) -> Result<(), String> {
+    let out_idx = output_idx(m, "module", outp)?;
     for n in 0 .. SAMPLE_RATE as i64 {
         if n % DECIMATE == 0 {
-            plot1(gen.gen());
+            let val = m.get_output(out_idx).ok_or("Can't read module output")?;
+            plot1(val);
         }
-        gen.advance();
+        m.advance();
     }
     //println!("Cost {:?}", gen.cost());
     println!("");
+    Ok(())
 }
 

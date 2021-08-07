@@ -2,7 +2,6 @@
 use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS, Hz, MAXHZ};
-use crate::gen;
 use crate::loader::Loader;
 pub use crate::additive::Function;
 use crate::module::*;
@@ -93,6 +92,10 @@ impl Gen {
 
     // XXX pulse with pulse width parameter?
 
+    pub fn set_freq(&mut self, freq: impl Into<RadPS>) {
+        self.velocity = freq.into();
+    }
+
     pub fn set_phase(&mut self, theta: f64) {
         debug_assert!(theta >= 0.0);
         self.phase = theta % (2.0 * PI);
@@ -107,25 +110,6 @@ impl Gen {
 
     pub fn set_func(&mut self, typ: Function) {
         self.func = get_func(typ);
-    }
-}
-
-// XXX get rid of gen::Gen
-impl gen::Gen for Gen {
-    fn set_freq(&mut self, freq: impl Into<RadPS>) {
-        self.velocity = freq.into();
-    }
-
-    fn advance(&mut self) -> bool {
-        Module::advance(self)
-    }
-
-    fn gen(&self) -> f64 {
-        self.val
-    }
-
-    fn cost(&self) -> usize {
-        1
     }
 }
 

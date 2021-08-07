@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{Write,BufWriter};
 use std::convert::Into;
 use crate::units::Samples;
-use crate::gen::Gen;
 use crate::module::*;
 use crate::loader::Loader;
 
@@ -36,13 +35,16 @@ impl Tape {
         }
     }
 
-    pub fn record(&mut self, gen: &mut impl Gen, time: impl Into<Samples>) {
-        let samples : Samples = time.into();
-        for _ in 1 .. samples.0 {
-            let (a,b) = conv(gen.gen());
-            self.f.write(&[a, b]).expect("cant write");
-            gen.advance();
+    pub fn record(&mut self, m: &mut impl Module, outp: &str, time: impl Into<Samples>) -> Result<(), String> {
+        let out_idx = output_idx(m, "module", outp)?;
+        let Samples(samples) = time.into();
+        for _ in 1 .. samples {
+            m.advance();
+            let val = m.get_output(out_idx).ok_or("can't read gen output")?;
+            let (a,b) = conv(val);
+            self.f.write(&[a, b]).map_err(|_| "can't write file")?;
         }
+        Ok(())
     }
 }
 

@@ -5,7 +5,6 @@ use cpal::{BufferSize, StreamConfig, SampleRate};
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use crate::units::{Samples, SAMPLE_RATE};
-use crate::gen::Gen;
 use crate::module::*;
 use crate::loader::Loader;
 
@@ -51,13 +50,15 @@ impl Speaker {
         Speaker{ tx: tx, rvalue: 0.0, lvalue: 0.0, stream: stream }
     }
 
-    pub fn record(&mut self, gen: &mut impl Gen, time: impl Into<Samples>) {
-        let samples : Samples = time.into();
-        for _ in 1 .. samples.0 {
-            let v = gen.gen() as f32;
+    pub fn record(&mut self, m: &mut impl Module, outp: &str, time: impl Into<Samples>) -> Result<(), String> {
+        let out_idx = output_idx(m, "module", outp)?;
+        let Samples(samples) = time.into();
+        for _ in 1 .. samples {
+            m.advance();
+            let v = m.get_output(out_idx).ok_or("can't read gen output")? as f32;
             self.tx.send((v, v)).unwrap();
-            gen.advance();
         }
+        Ok(())
     }
 }
 
