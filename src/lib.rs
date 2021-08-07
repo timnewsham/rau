@@ -9,6 +9,7 @@ pub mod flange;
 pub mod keyboard;
 pub mod loader;
 pub mod module;
+pub mod phaser;
 pub mod simple;
 pub mod speaker;
 pub mod units;

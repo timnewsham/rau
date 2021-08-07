@@ -74,12 +74,13 @@ impl Flange {
         self.delay.set_input(v);
     }
     pub fn advance(&mut self) -> f64 {
-        let m = 0.5 * self.manual * MAXDELAY; // in seconds
-        let w = 0.5 * m * self.width; // in seconds
+        // delay oscillates between m-w and m+w and most be between 0 and MAXDELAY
         let lfo = self.lfo.advance();
-
+        let m = 0.5 * self.manual * MAXDELAY;
+        let w = m * self.width;
         let delay = m + lfo * w; // always between 0 and MAXDELAY
-        assert!(0.0 < delay && delay < MAXDELAY);
+        //assert!(0.0 < delay && delay < MAXDELAY);
+
         self.delay.set_delay(Sec(delay));
         self.val = self.delay.advance();
         self.val
