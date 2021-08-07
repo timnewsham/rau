@@ -2,6 +2,7 @@
 pub mod additive;
 pub mod envelope;
 pub mod ascii;
+pub mod delay;
 pub mod file;
 pub mod filt;
 pub mod keyboard;

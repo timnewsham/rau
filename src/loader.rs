@@ -31,6 +31,7 @@ impl Loader {
     // Wish this could be done statically just once...
     pub fn init(&mut self) {
         crate::additive::init(self);
+        crate::delay::init(self);
         crate::envelope::init(self);
         crate::file::init(self);
         crate::filt::init(self);

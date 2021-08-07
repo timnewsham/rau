@@ -10,6 +10,7 @@ mult mult # to multiply envelope with oscillator
 
 # a filter, because why not
 filt filter lp 1000.0 0.0 0.1
+delay delay 0.3 0.9 0.3
 
 # a bunch of wires to hook everything up
 wire key:out osc:freq
@@ -17,6 +18,7 @@ wire key:gate env:gate
 wire osc:out mult:in1
 wire env:out mult:in2
 wire mult:out filt:in
-wire filt:out speaker:left
-wire filt:out speaker:right
+wire filt:out delay:in
+wire delay:out speaker:left
+wire delay:out speaker:right
 

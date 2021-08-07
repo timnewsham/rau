@@ -1,0 +1,84 @@
+diff --git a/src/module.rs b/src/module.rs
+index 94e4de7..097c2bc 100644
+--- a/src/module.rs
++++ b/src/module.rs
+@@ -6,10 +6,6 @@ use std::collections::HashMap;
+ use std::convert::Into;
+ use crate::units::Samples;
+ 
+-// Description of a terminals on a module
+-// XXX for now
+-pub type TerminalDescr = String;
+-
+ // Modules need to be wrapped somehow because they are "dyn".
+ // Using reference counting simplifies storing modules in wires in a rack (but is not strictly necessary).
+ // Using RefCell lets us easily borrow the modules as mutable.
+@@ -18,12 +14,68 @@ pub fn modref_new<T: 'static + Module>(data: T) -> ModRef {
+     Rc::new( RefCell::new(data) ) 
+ }
+ 
++// Description of a terminals on a module
++// XXX for now
++pub type TerminalDescr = String;
++
+ // proposed
+ #[allow(dead_code)]
+ pub struct TerminalDescr2 {
+     name: String,
+     min: f64,
+     max: f64,
++    // XXX type - multi, single, stereo, ...
++}
++
++// A module input or output value
++pub enum Value {
++    Single(f64), // XXX is it worth having a separate enum for this? Vec of length 1 could suffice...
++    Multi(Vec<f64>),
++}
++
++impl From<f64> for Value {
++    fn from(x: f64) -> Self {
++        Self::Single(x)
++    }
++}
++impl From<Vec<f64>> for Value {
++    fn from(x: Vec<f64>) -> Self {
++        Self::Multi(x)
++    }
++}
++
++impl Value {
++    // map f over all values
++    pub fn for_each<F>(&self, mut f: F) -> Self 
++        where F: FnMut(f64) -> f64
++    {
++        match self {
++            Self::Single(v) => Self::Single(f(*v)),
++            Self::Multi(vec) => Self::Multi(vec.iter().copied().map(f).collect()),
++        }
++    }
++
++    // map f over all values and sum the result to a single value
++    pub fn sum_for_each<F>(&self, mut f: F) -> f64
++        where F: FnMut(f64) -> f64
++    {
++        match self {
++            Self::Single(v) => f(*v),
++            Self::Multi(vec) => vec.iter().copied().map(f).sum(),
++        }
++    }
++
++    // take the first two values as left and right channels
++    pub fn stereo(&self) -> (f64, f64) {
++        match self {
++            Self::Single(v) => return (*v, *v),
++            Self::Multi(vec) => {
++                if vec.len() > 2 { return (vec[0], vec[1]); }
++                if vec.len() > 1 { return (vec[0], vec[0]); }
++                return (0.0, 0.0);
++            },
++        }
++    }
+ }
+ 
+ /*
