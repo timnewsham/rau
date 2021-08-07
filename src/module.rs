@@ -172,3 +172,11 @@ pub fn parse<T: FromStr>(name: &str, val: &str) -> Result<T, String> {
     val.parse().map_err(|_| format!("can't parse {} '{}", name, val))
 }
 
+pub fn mod_inc(n: usize, max: usize) -> usize {
+    let v = n + 1;
+    if v == max { 0 } else { v }
+}
+
+pub fn mod_sub(n: usize, m: usize, max: usize) -> usize {
+    if m <= n { n - m } else { n + max - m }
+}
