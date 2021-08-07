@@ -5,7 +5,7 @@ use crate::units::{RadPS, Hz};
 use crate::module::*;
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub enum FiltType { LP, LowShelf, BP, HighShelf, HP }
+pub enum FiltType { LP, LowShelf, CenterShelf, HighShelf, HP }
 
 impl Default for FiltType {
     fn default() -> Self { FiltType::LP }
@@ -16,7 +16,7 @@ impl FromStr for FiltType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "lp" { return Ok(FiltType::LP); }
         if s == "lowshelf" { return Ok(FiltType::LowShelf); }
-        if s == "bp" { return Ok(FiltType::BP); }
+        if s == "bp" { return Ok(FiltType::CenterShelf); }
         if s == "highshelf" { return Ok(FiltType::HighShelf); }
         if s == "hp" { return Ok(FiltType::HP); }
         return Err(format!("unrecognized filttype '{}'", s));
@@ -121,7 +121,7 @@ impl Filter {
                 self.a1 = -2.0 * cw / a0;
                 self.a2 = (1.0 - alpha) / a0;
             },
-        FiltType::BP => {
+        FiltType::CenterShelf => {
                 let a0 = 1.0 + alpha / A;
 
                 self.b0 = (1.0 + alpha * A) / a0;

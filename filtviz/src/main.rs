@@ -73,7 +73,7 @@ impl epi::App for App {
             ui.horizontal(|ui| {
                 ui.radio_value(mode, FiltType::LowShelf, "LowShelf");
                 ui.radio_value(mode, FiltType::LP, "LP");
-                ui.radio_value(mode, FiltType::BP, "BP");
+                ui.radio_value(mode, FiltType::CenterShelf, "CenterShelf");
                 ui.radio_value(mode, FiltType::HP, "HP");
                 ui.radio_value(mode, FiltType::HighShelf, "HighShelf");
             });
