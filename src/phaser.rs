@@ -34,7 +34,7 @@ impl AllPass {
     }
 }
 
-const MAXG: f64 = 0.95; // XXX what are the units here?
+const MAXG: f64 = 0.95;
 
 pub struct Phaser {
     lfo: Osc,
@@ -42,9 +42,7 @@ pub struct Phaser {
     f2: AllPass,
     f3: AllPass,
     f4: AllPass,
-    manual: f64,
     width: f64,
-    dry: f64,
     fb: f64,
     delay: f64,
     inp: f64,
@@ -53,21 +51,19 @@ pub struct Phaser {
 
 impl Phaser {
     pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
-        if args.len() != 7 {
-            return Err(format!("usage: {} functype freq manual width dry feedback", args[0]));
+        if args.len() != 5 {
+            return Err(format!("usage: {} functype freq width feedback", args[0]));
         }
         let func = parse::<Function>("functype", args[1])?;
         let freq = parse::<f64>("freq", args[2])?;
-        let manual = parse::<f64>("manual", args[3])?;
-        let width = parse::<f64>("width", args[4])?;
-        let dry = parse::<f64>("dry", args[5])?;
-        let fb = parse::<f64>("feedback", args[6])?;
+        let width = parse::<f64>("width", args[3])?;
+        let fb = parse::<f64>("feedback", args[4])?;
 
-        // XXX sanity check manual, width, dry, fb
-        Ok( modref_new(Self::new(func, Hz(freq), manual, width, dry, fb)) )
+        // XXX sanity check width, fb
+        Ok( modref_new(Self::new(func, Hz(freq), width, fb)) )
     }
     
-    pub fn new(func: Function, freq: impl Into<RadPS>, manual: f64, width: f64, dry: f64, fb: f64) -> Self {
+    pub fn new(func: Function, freq: impl Into<RadPS>, width: f64, fb: f64) -> Self {
         let g4 = 0.9 * MAXG;
         Phaser {
             lfo: Osc::new(func, freq),
@@ -75,9 +71,7 @@ impl Phaser {
             f2: AllPass::new(g4 / 4.0),
             f3: AllPass::new(g4 / 2.0),
             f4: AllPass::new(g4 / 1.0),
-            manual: manual,
             width: width,
-            dry: dry,
             fb: fb,
             delay: 0.0,
             inp: 0.0,
@@ -95,12 +89,10 @@ impl Phaser {
     pub fn advance(&mut self) -> f64 {
         let inp = self.inp + self.fb * self.delay;
 
-        // g4 oscillates between m-w and m+w which must be between 0 and MAXG
+        // g4 oscillate between -width and width which must be between -MAXG and MAXG
         let lfo = self.lfo.advance();
-        let m = 0.5 * self.manual * MAXG;
-        let w = m * self.width;
-        let g4 = m + lfo * w;
-        assert!(0.0 < g4 && g4 < MAXG);
+        let g4 = self.width * MAXG * lfo;
+        assert!(-MAXG < g4 && g4 < MAXG);
 
         self.f1.set_g(g4 / 8.0);
         self.f2.set_g(g4 / 4.0);
@@ -114,7 +106,7 @@ impl Phaser {
         let out = self.f4.advance();
 
         self.delay = out;
-        self.val = out + self.dry * self.inp;
+        self.val = out + self.inp;
         self.val
     }
 }

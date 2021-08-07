@@ -7,8 +7,8 @@ env envelope 0.05 0.2 0.4 0.5
 envmult mult
 
 # note: negative "width" inverts the lfo's direction
-phaser1 phaser tri 0.5 0.99 0.99 0.99 0.5
-phaser2 phaser tri 0.5 0.99 -0.99 0.99 0.5
+phaser1 phaser tri 1.0 1.0 0.1
+phaser2 phaser tri 1.0 -1.0 0.1
 
 wire key:out osc:freq
 wire key:gate env:gate
