@@ -117,8 +117,44 @@ impl Module for Inv {
     }
 }
 
+pub struct Const {
+    out: f64,
+}
+
+impl Const {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
+        if args.len() != 2 {
+            return Err(format!("usage: {} val", args[0]));
+        }
+        let v = parse::<f64>("value", args[1])?;
+        Ok( modref_new(Self::new(v)) )
+    }
+
+    pub fn new(v: f64) -> Self {
+        Self{ out: v }
+    }
+}
+
+impl Module for Const {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
+        (vec![],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 { Some(self.out) } else { None }
+    }
+
+    fn set_input(&mut self, _idx: usize, _value: f64) {
+    }
+    fn advance(&mut self) -> bool {
+        return true;
+    }
+}
+
 pub fn init(l: &mut Loader) {
     l.register("mult", Mult::from_cmd);
     l.register("add", Add::from_cmd);
     l.register("inv", Inv::from_cmd);
+    l.register("const", Const::from_cmd);
 }
