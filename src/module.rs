@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::Into;
 use crate::units::Samples;
+pub use crate::loader::*;
 
 // Description of a terminals on a module
 // XXX for now

@@ -35,6 +35,7 @@ impl Loader {
         crate::envelope::init(self);
         crate::file::init(self);
         crate::filt::init(self);
+        crate::flange::init(self);
         crate::keyboard::init(self);
         crate::simple::init(self);
         crate::speaker::init(self);

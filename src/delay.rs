@@ -44,6 +44,33 @@ impl Delay {
             wpos: 0,
         }
     }
+
+    pub fn set_fb(&mut self, v: f64) {
+        self.fb = v;
+    }
+    pub fn set_input(&mut self, v: f64) {
+        self.inp = v;
+    }
+    pub fn set_dry(&mut self, v: f64) {
+        self.dry = v;
+    }
+    pub fn set_delay(&mut self, v: impl Into<Samples>) {
+        let Samples(delay) = v.into();
+        
+        // rpos lags wpos by delay samples.
+        self.rpos = mod_sub(self.wpos, delay as usize, self.ring.len());
+    }
+
+    pub fn advance(&mut self) -> f64 {
+        let delayed = self.ring[self.rpos] * self.fb;
+        self.ring[self.wpos] = delayed + self.inp;
+
+        self.rpos = mod_inc(self.rpos, self.ring.len());
+        self.wpos = mod_inc(self.wpos, self.ring.len());
+
+        self.val = delayed + self.dry * self.inp;
+        self.val
+    }
 }
 
 impl Module for Delay {
@@ -58,25 +85,14 @@ impl Module for Delay {
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
-        if idx == 0 { self.inp = value; }
+        if idx == 0 { self.set_input(value); }
 
         // XXX show error if value is too large?  right now we silently wrap around
-        if idx == 1 {
-            let Samples(delay) = Sec(value).into();
-        
-            // rpos lags wpos by delay samples.
-            self.rpos = mod_sub(self.wpos, delay as usize, self.ring.len());
-        }
+        if idx == 1 { self.set_delay(Sec(value)); }
     }
 
     fn advance(&mut self) -> bool {
-        let delayed = self.ring[self.rpos] * self.fb;
-        self.ring[self.wpos] = delayed + self.inp;
-
-        self.rpos = mod_inc(self.rpos, self.ring.len());
-        self.wpos = mod_inc(self.wpos, self.ring.len());
-
-        self.val = delayed + self.dry * self.inp;
+        Delay::advance(self);
         return true;
     }
 }

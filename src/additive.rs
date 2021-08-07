@@ -4,7 +4,6 @@ use std::convert::Into;
 use std::f64::consts::PI;
 use crate::units::{RadPS, MAXRADPS, Hz, MAXHZ};
 use crate::module::*;
-use crate::loader::Loader;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Function{ SIN, TRI, SAWUP, SAWDOWN, SQUARE }
@@ -104,6 +103,19 @@ impl Gen {
         }
         cost
     }
+
+    pub fn advance(&mut self) -> f64 {
+        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+
+        let mut x = 0.0;
+        for param in self.series.iter() {
+            if param.k as f64 * self.velocity.0 <= MAXRADPS { // disallow aliasing
+                x += param.amp * (param.k as f64 * self.phase).sin();
+            }
+        }
+        self.val = x;
+        self.val
+    }
 }
 
 impl Module for Gen {
@@ -124,15 +136,7 @@ impl Module for Gen {
     }
 
     fn advance(&mut self) -> bool {
-        self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
-
-        let mut x = 0.0;
-        for param in self.series.iter() {
-            if param.k as f64 * self.velocity.0 <= MAXRADPS { // disallow aliasing
-                x += param.amp * (param.k as f64 * self.phase).sin();
-            }
-        }
-        self.val = x;
+        Gen::advance(self);
         return true;
     }
 }

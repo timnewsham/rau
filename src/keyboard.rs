@@ -3,7 +3,6 @@ use std::convert::Into;
 use device_query::{DeviceState, DeviceQuery, Keycode};
 use crate::units::{Samples, Hz, Cent, Sec};
 use crate::module::*;
-use crate::loader::Loader;
 
 pub struct Keyboard {
     dev: DeviceState,

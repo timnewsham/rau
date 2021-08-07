@@ -6,7 +6,6 @@ use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use crate::units::{Samples, SAMPLE_RATE};
 use crate::module::*;
-use crate::loader::Loader;
 
 pub struct Speaker {
     tx: mpsc::SyncSender<(f32, f32)>,

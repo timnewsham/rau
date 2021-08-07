@@ -1,5 +1,4 @@
 
-use crate::loader::Loader;
 use crate::module::*;
 
 pub struct Mult {

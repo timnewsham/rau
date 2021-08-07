@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::convert::Into;
 use crate::units::{RadPS, Hz};
 use crate::module::*;
-use crate::loader::Loader;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum FiltType { LP, LowShelf, BP, HighShelf, HP }

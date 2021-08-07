@@ -2,7 +2,6 @@
 use std::convert::Into;
 use crate::units::{Samples, Sec};
 use crate::module::*;
-use crate::loader::Loader;
 
 #[derive(Debug)]
 enum EnvMode{ Attack, Decay, Release }

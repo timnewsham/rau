@@ -4,7 +4,6 @@ use std::io::{Write,BufWriter};
 use std::convert::Into;
 use crate::units::Samples;
 use crate::module::*;
-use crate::loader::Loader;
 
 fn conv(x: f64) -> (u8, u8) {
     let val = (32767.0 * x.clamp(-1.0, 1.0)) as i16;

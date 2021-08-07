@@ -5,6 +5,7 @@ pub mod ascii;
 pub mod delay;
 pub mod file;
 pub mod filt;
+pub mod flange;
 pub mod keyboard;
 pub mod loader;
 pub mod module;
