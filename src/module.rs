@@ -46,18 +46,26 @@ pub trait Module {
     // XXX some sort of interface for getting generic parameters
     // and setting them from ascii strings?
 
-    fn set_named_input(&mut self, mod_name: &str, name: &str, val: f64) -> Result<(), String> {
+    fn input_idx(&self, mod_name: &str, name: &str) -> Result<usize, String> {
         let (ins, _) = self.get_terminals();
-        let idx = ins.iter().position(|n| n.eq(name))
-                        .ok_or(format!("{} has no input named {}", mod_name, name))?;
+        ins.iter().position(|n| n.eq(name))
+                .ok_or(format!("{} has no input named {}", mod_name, name))
+    }
+
+    fn output_idx(&self, mod_name: &str, name: &str) -> Result<usize, String> {
+        let (_, outs) = self.get_terminals();
+        outs.iter().position(|n| n.eq(name))
+                .ok_or(format!("{} has no output named {}", mod_name, name))
+    }
+
+    fn set_named_input(&mut self, mod_name: &str, name: &str, val: f64) -> Result<(), String> {
+        let idx = self.input_idx(mod_name, name)?;
         // XXX set_input should report errors
         Ok(self.set_input(idx, val))
     }
 
     fn get_named_output(&self, mod_name: &str, name: &str) -> Result<f64, String> {
-        let (_, outs) = self.get_terminals();
-        let idx = outs.iter().position(|n| n.eq(name))
-                    .ok_or(format!("{} has no output named {}", mod_name, name))?;
+        let idx = self.output_idx(mod_name, name)?;
         self.get_output(idx).ok_or(format!("can't set {}", name))
     }
 }
@@ -77,18 +85,6 @@ pub struct Rack {
     modules: HashMap<String, ModRef>,
     wires: Vec<Wire>,
     // XXX cache of output values for each module...
-}
-
-pub fn input_idx(m: &dyn Module, mod_name: &str, name: &str) -> Result<usize, String> {
-    let (ins, _) = m.get_terminals();
-    ins.iter().position(|n| n.eq(name))
-            .ok_or(format!("{} has no input named {}", mod_name, name))
-}
-
-pub fn output_idx(m: &dyn Module, mod_name: &str, name: &str) -> Result<usize, String> {
-    let (_, outs) = m.get_terminals();
-    outs.iter().position(|n| n.eq(name))
-            .ok_or(format!("{} has no output named {}", mod_name, name))
 }
 
 impl Rack {
@@ -116,8 +112,8 @@ impl Rack {
         let from_mod = self.modules.get(from_mod_name).ok_or(format!("no module {}", from_mod_name))?;
         let to_mod = self.modules.get(to_mod_name).ok_or(format!("no module {}", to_mod_name))?;
 
-        let out_idx = output_idx(&*from_mod.borrow(), from_mod_name, from_out_name)?;
-        let in_idx = input_idx(&*to_mod.borrow(), to_mod_name, to_in_name)?;
+        let out_idx = from_mod.borrow().output_idx(from_mod_name, from_out_name)?;
+        let in_idx = to_mod.borrow().input_idx(to_mod_name, to_in_name)?;
 
         if self.wires.iter().any(|w| w.to_mod_name == to_mod_name && w.to_in == in_idx) {
             return Err(format!("{}'s {} input is already connected", to_mod_name, to_in_name));

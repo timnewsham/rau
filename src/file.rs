@@ -36,7 +36,7 @@ impl Tape {
     }
 
     pub fn record(&mut self, m: &mut impl Module, outp: &str, time: impl Into<Samples>) -> Result<(), String> {
-        let out_idx = output_idx(m, "module", outp)?;
+        let out_idx = m.output_idx("module", outp)?;
         let Samples(samples) = time.into();
         for _ in 1 .. samples {
             m.advance();
