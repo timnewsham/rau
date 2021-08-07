@@ -11,16 +11,14 @@ use crate::module::*;
 // Note: These will have low quality outputs at higher frequencies.
 // but might be well suited for some LFO operations.
 pub struct Gen {
-    // invariant: 0 <= phase < 2*PI
-    phase: f64, // in radians
-
-    // invariant: 0 <= velocity <= PI
-    velocity: RadPS,
+    phase: f64, // in radians, invariant: 0 <= phase < 2*PI
+    velocity: RadPS, // invariant: 0 <= velocity <= PI
 
     amp: f64,
     off: f64,
-
     func: fn(f64) -> f64,
+
+    val: f64,
 }
 
 // XXX exponential ramp-up?  exponential decay?
@@ -89,6 +87,7 @@ impl Gen {
             amp: 1.0,
             off: 0.0,
             func: get_func(typ),
+            val: 0.0,
         }
     }
 
@@ -111,6 +110,7 @@ impl Gen {
     }
 }
 
+// XXX get rid of gen::Gen
 impl gen::Gen for Gen {
     fn set_freq(&mut self, freq: impl Into<RadPS>) {
         self.velocity = freq.into();
@@ -118,11 +118,12 @@ impl gen::Gen for Gen {
 
     fn advance(&mut self) -> bool {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
+        self.val = self.off + self.amp * (self.func)(self.phase);
         return true;
     }
 
     fn gen(&self) -> f64 {
-        self.off + self.amp * (self.func)(self.phase)
+        self.val
     }
 
     fn cost(&self) -> usize {

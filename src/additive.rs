@@ -56,12 +56,10 @@ fn get_series(func: Function, n: usize) -> Vec<HarmonicParam> {
 // An additive generator generates a signal as a sum of SIN waves.
 pub struct Gen {
     pub series: Vec<HarmonicParam>,
+    phase: f64, // in radians, invariant: 0 <= phase < 2*PI
+    velocity: RadPS, // invariant: 0 <= velocity <= PI
 
-    // invariant: 0 <= phase < 2*PI
-    phase: f64, // in radians
-
-    // invariant: 0 <= velocity <= PI
-    velocity: RadPS,
+    val: f64,
 }
 
 #[allow(dead_code)]
@@ -81,6 +79,7 @@ impl Gen {
             phase: 0.0,
             velocity: freq.into(),
             series: get_series(typ, n),
+            val: 0.0
         }
     }
 
@@ -104,6 +103,7 @@ impl Gen {
     }
 }
 
+// XXX get rid of gen::Gen
 impl gen::Gen for Gen {
     fn set_freq(&mut self, freq: impl Into<RadPS>) {
         self.velocity = freq.into();
@@ -111,10 +111,7 @@ impl gen::Gen for Gen {
 
     fn advance(&mut self) -> bool {
         self.phase = (self.phase + self.velocity.0) % (2.0 * PI);
-        return true;
-    }
 
-    fn gen(&self) -> f64 {
         let mut x = 0.0;
         for param in self.series.iter() {
             // disallow aliasing
@@ -123,7 +120,12 @@ impl gen::Gen for Gen {
                 x += param.amp * (param.k as f64 * self.phase).sin();
             }
         }
-        x
+        self.val = x;
+        return true;
+    }
+
+    fn gen(&self) -> f64 {
+        self.val
     }
 
     fn cost(&self) -> usize {

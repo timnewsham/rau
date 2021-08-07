@@ -21,6 +21,7 @@ impl<T> module::Module for T where T: Gen {
 
     fn get_output(&self, idx: usize) -> Option<f64> {
         if idx == 0 {
+            // XXX get_output shouldnt compute, advance() should.
             Some(self.gen())
         } else {
             unreachable!();
