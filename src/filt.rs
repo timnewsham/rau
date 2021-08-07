@@ -5,7 +5,7 @@ use crate::units::{RadPS, Hz};
 use crate::module::*;
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub enum FiltType { LP, LowShelf, CenterShelf, HighShelf, HP }
+pub enum FiltType { LP, BP, Notch, HP, LowShelf, CenterShelf, HighShelf }
 
 impl Default for FiltType {
     fn default() -> Self { FiltType::LP }
@@ -15,10 +15,12 @@ impl FromStr for FiltType {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "lp" { return Ok(FiltType::LP); }
-        if s == "lowshelf" { return Ok(FiltType::LowShelf); }
-        if s == "bp" { return Ok(FiltType::CenterShelf); }
-        if s == "highshelf" { return Ok(FiltType::HighShelf); }
+        if s == "bp" { return Ok(FiltType::BP); }
+        if s == "notch" { return Ok(FiltType::Notch); }
         if s == "hp" { return Ok(FiltType::HP); }
+        if s == "lowshelf" { return Ok(FiltType::LowShelf); }
+        if s == "centershelf" { return Ok(FiltType::CenterShelf); }
+        if s == "highshelf" { return Ok(FiltType::HighShelf); }
         return Err(format!("unrecognized filttype '{}'", s));
     }
 }
@@ -103,12 +105,40 @@ impl Filter {
                 self.a1 = 2.0 * ((A-1.0) - (A+1.0) * cw) / a0;
                 self.a2 = ((A+1.0) - (A-1.0) * cw - g) / a0;
             },
+        FiltType::CenterShelf => {
+                let a0 = 1.0 + alpha / A;
+
+                self.b0 = (1.0 + alpha * A) / a0;
+                self.b1 = (-2.0 * cw) / a0;
+                self.b2 = (1.0 - alpha * A) / a0;
+                self.a1 = (-2.0 * cw) / a0;
+                self.a2 = (1.0 - alpha / A) / a0;
+            },
+
         FiltType::LP => {
                 let a0 = 1.0 + alpha / A;
 
                 self.b0 = 0.5 * (1.0 - cw) / a0;
                 self.b1 = (1.0 - cw) / a0;
                 self.b2 = 0.5 * (1.0 - cw) / a0;
+                self.a1 = -2.0 * cw / a0;
+                self.a2 = (1.0 - alpha) / a0;
+            },
+        FiltType::BP => {
+                let a0 = 1.0 + alpha / A;
+ 
+                self.b0 = alpha / a0;
+                self.b1 = 0.0 / a0;
+                self.b2 = -alpha / a0;
+                self.a1 = -2.0 * cw / a0;
+                self.a2 = (1.0 - alpha) / a0;
+            },
+        FiltType::Notch => {
+                let a0 = 1.0 + alpha / A;
+
+                self.b0 = 1.0 / a0;
+                self.b1 = -2.0 * cw / a0;
+                self.b2 = 1.0 / a0;
                 self.a1 = -2.0 * cw / a0;
                 self.a2 = (1.0 - alpha) / a0;
             },
@@ -120,15 +150,6 @@ impl Filter {
                 self.b2 = 0.5 * (1.0 + cw) / a0;
                 self.a1 = -2.0 * cw / a0;
                 self.a2 = (1.0 - alpha) / a0;
-            },
-        FiltType::CenterShelf => {
-                let a0 = 1.0 + alpha / A;
-
-                self.b0 = (1.0 + alpha * A) / a0;
-                self.b1 = (-2.0 * cw) / a0;
-                self.b2 = (1.0 - alpha * A) / a0;
-                self.a1 = (-2.0 * cw) / a0;
-                self.a2 = (1.0 - alpha / A) / a0;
             },
         };
     }

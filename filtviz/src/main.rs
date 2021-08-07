@@ -48,10 +48,10 @@ impl App {
 impl Default for App {
     fn default() -> Self {
         App { 
-            freq: 440.0, 
-            q: 1.0,
-            gain: 1.0,
-            mode: FiltType::LowShelf,
+            freq: 5000.0,
+            q: 0.7,
+            gain: 0.0,
+            mode: FiltType::BP,
             filter: Filter::default(),
         }
     }
@@ -72,10 +72,12 @@ impl epi::App for App {
             ui.add(egui::Slider::new(gain, -5.0..=5.0).text("Gain"));
             ui.horizontal(|ui| {
                 ui.radio_value(mode, FiltType::LowShelf, "LowShelf");
-                ui.radio_value(mode, FiltType::LP, "LP");
                 ui.radio_value(mode, FiltType::CenterShelf, "CenterShelf");
-                ui.radio_value(mode, FiltType::HP, "HP");
                 ui.radio_value(mode, FiltType::HighShelf, "HighShelf");
+                ui.radio_value(mode, FiltType::LP, "LP");
+                ui.radio_value(mode, FiltType::BP, "BP");
+                ui.radio_value(mode, FiltType::Notch, "Notch");
+                ui.radio_value(mode, FiltType::HP, "HP");
             });
             let plot = Plot::new("freq response")
                 .line(curve)
