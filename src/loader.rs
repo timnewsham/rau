@@ -75,7 +75,7 @@ impl Loader {
         } else {
             let name = ws.remove(0).to_owned(); // ws.len() > 0
             return self.proc_mod(&name, rack, ws);
-        } 
+        }
     }
 
     pub fn load(&mut self, fname: &str) -> Result<Rack, String> {
@@ -91,7 +91,7 @@ impl Loader {
             if let Some(comment) = ws.iter().position(|s| s.starts_with("#")) {
                 ws.resize(comment, ""); // strip comments
             }
-    
+
             self.proc_line(&mut rack, ws).map_err(|e| format!("{}:{}: {}", fname, lno+1, e))?;
         }
         Ok(rack)

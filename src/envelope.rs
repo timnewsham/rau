@@ -23,7 +23,7 @@ pub struct Envelope {
 fn decay_factor(time: impl Into<Samples>) -> f64 {
     // exp decay:
     // x[n+1] = r x[n],  x[0] = 1.0
-    // x[n] = r^n 
+    // x[n] = r^n
     // log(x[n]) = n * log(r)
     // set x[N] be 0.1 (10dB down) of the starting value
     // -1 = N * log(r)
@@ -89,11 +89,11 @@ impl Module for Envelope {
                 self.val = 1.0;
                 self.mode = EnvMode::Decay;
             },
-        EnvMode::Decay => 
+        EnvMode::Decay =>
             if self.val > self.sustain {
                 self.val = self.sustain + (self.val - self.sustain) * self.decay;
             },
-        EnvMode::Release => 
+        EnvMode::Release =>
             self.val = self.val * self.release,
         };
         return true;

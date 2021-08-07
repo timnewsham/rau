@@ -35,7 +35,7 @@ impl Speaker {
             buffer_size: BufferSize::Default,
         };
         let (tx, rx) = mpsc::sync_channel(64); // XXX parameter
-        
+
         let pump_func = move |dat: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 for n in (0..dat.len()).step_by(2) {
                     let (r,l) = rx.recv().unwrap_or((0.0, 0.0));
@@ -65,7 +65,7 @@ impl Speaker {
 impl Module for Speaker {
     fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
         (vec!["left".to_string(),
-              "right".to_string()], 
+              "right".to_string()],
          vec![])
     }
 

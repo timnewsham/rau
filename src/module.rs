@@ -14,8 +14,8 @@ pub type TerminalDescr = String;
 // Using reference counting simplifies storing modules in wires in a rack (but is not strictly necessary).
 // Using RefCell lets us easily borrow the modules as mutable.
 pub type ModRef = Rc<RefCell<dyn Module>>;
-pub fn modref_new<T: 'static + Module>(data: T) -> ModRef { 
-    Rc::new( RefCell::new(data) ) 
+pub fn modref_new<T: 'static + Module>(data: T) -> ModRef {
+    Rc::new( RefCell::new(data) )
 }
 
 // proposed
@@ -89,7 +89,7 @@ pub struct Rack {
 
 impl Rack {
     pub fn new() -> Self {
-        Rack { 
+        Rack {
             modules: HashMap::new(),
             wires: Vec::new(),
         }
@@ -106,7 +106,7 @@ impl Rack {
     }
 
     // Add a wire and return its index on success.
-    pub fn add_wire(&mut self, 
+    pub fn add_wire(&mut self,
                     from_mod_name: &str, from_out_name: &str,
                     to_mod_name: &str, to_in_name: &str) -> Result<(), String> {
         let from_mod = self.modules.get(from_mod_name).ok_or(format!("no module {}", from_mod_name))?;

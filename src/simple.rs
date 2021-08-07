@@ -70,24 +70,29 @@ fn get_func(typ: Function) -> fn(f64)->f64 {
 #[allow(dead_code)]
 impl Gen {
     pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
-        if args.len() != 3 {
-            return Err(format!("usage: {} functype freq", args[0]));
+        if args.len() < 3 || args.len() > 5 {
+            return Err(format!("usage: {} functype freq [amp off]", args[0]));
         }
         let func = parse::<Function>("functype", args[1])?;
         let freq = parse::<f64>("freq", args[2])?;
-        Ok( modref_new(Self::new(func, Hz(freq))) )
+        let amp = if args.len() >= 3 { parse::<f64>("amp", args[3])? } else { 1.0 };
+        let off = if args.len() >= 4 { parse::<f64>("off", args[4])? } else { 0.0 };
+
+        Ok( modref_new(Self::new_full(func, Hz(freq), amp, off)) )
     }
 
-    // internal constructor
-    pub fn new(typ: Function, freq: impl Into<RadPS>) -> Self {
+    pub fn new_full(typ: Function, freq: impl Into<RadPS>, amp: f64, off: f64) -> Self {
         Self {
             phase: 0.0,
             velocity: freq.into(),
-            amp: 1.0,
-            off: 0.0,
+            amp: amp,
+            off: off,
             func: get_func(typ),
             val: 0.0,
         }
+    }
+    pub fn new(typ: Function, freq: impl Into<RadPS>) -> Self {
+        Self::new_full(typ, freq, 1.0, 0.0)
     }
 
     // XXX pulse with pulse width parameter?

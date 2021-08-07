@@ -70,7 +70,7 @@ impl Gen {
         let func = parse::<Function>("functype", args[1])?;
         let freq = parse::<f64>("freq", args[2])?;
         let order = parse::<usize>("order", args[3])?;
-        Ok( modref_new(Self::new(func, Hz(freq), order)) ) 
+        Ok( modref_new(Self::new(func, Hz(freq), order)) )
     }
 
     pub fn new(typ: Function, freq: impl Into<RadPS>, n: usize) -> Self {

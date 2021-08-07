@@ -50,7 +50,7 @@ impl Tape {
 
 impl Module for Tape {
     fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
-        (vec!["in".to_string()], 
+        (vec!["in".to_string()],
          vec![])
     }
 

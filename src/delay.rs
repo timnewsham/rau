@@ -11,7 +11,7 @@ pub struct Delay {
     fb: f64,
     rpos: usize, // invariant: less than ring.len()
     wpos: usize, // invariant: less than ring.len()
-    
+
     inp: f64,
     val: f64,
 }
@@ -34,8 +34,8 @@ impl Delay {
 
     pub fn new(maxdelay: impl Into<Samples>, dry: f64, fb: f64) -> Self {
         let Samples(maxd) = maxdelay.into();
-        Self{ 
-            ring: vec![0.0; maxd as usize], 
+        Self{
+            ring: vec![0.0; maxd as usize],
             dry: dry,
             fb: fb,
             inp: 0.0,
