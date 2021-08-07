@@ -68,6 +68,9 @@ impl Flange {
     pub fn set_input(&mut self, v: f64) {
         self.delay.set_input(0.5 * v);
     }
+
+    // changing the delay dynamically is similar to resampling...  I imagine this causes some aliasing noise?
+    // should this function use a resampler or do some kind of interpolation?
     pub fn advance(&mut self) -> f64 {
         // delay oscillates between m-w and m+w and most be between 0 and MAXDELAY
         let lfo = self.lfo.advance();
