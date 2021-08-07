@@ -153,9 +153,8 @@ impl Module for Const {
 }
 
 // bias an output by scaling it and adding an offset
-// width is a fraction of the offset.
-// When applied to an oscillator it will oscillate around bias by the width fraction.
-// With a width of 1.0 it will oscillate between 0 and 2*bias.
+// Beware: If width is greater than off, then this will do strange things to an oscillator signal.
+// But widths greather than off are fine for envelopes.
 pub struct Bias {
     off: f64,
     width: f64,
@@ -175,7 +174,6 @@ impl Bias {
     }
 
     pub fn new(off: f64, width: f64) -> Self {
-        assert!(0.0 <= width && width <= 1.0);
         Bias {
             off: off,
             width: width,
@@ -200,8 +198,7 @@ impl Module for Bias {
     }
 
     fn advance(&mut self) -> bool {
-        let w = self.off * self.width;
-        self.val = self.off + w * self.inp;
+        self.val = self.off + self.width * self.inp;
         return true;
     }
 }

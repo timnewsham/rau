@@ -8,6 +8,10 @@ use crate::module::*;
 #[derive(PartialEq, Copy, Clone)]
 pub enum Function{ SIN, TRI, SAWUP, SAWDOWN, SQUARE }
 
+impl Default for Function {
+    fn default() -> Self { Function::SIN }
+}
+
 impl FromStr for Function {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
