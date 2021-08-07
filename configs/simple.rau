@@ -14,7 +14,9 @@ envmult mult # to multiply envelope with oscillator
 
 # a filter, because why not
 filt filter lp 1000.0 0.0 0.1
-delay delay 0.3 0.9 0.3
+delay delay 1.0 0.5 0.5
+
+flangelfo osc2 sin 1.0 0.005 0.02
 
 # a bunch of wires to hook everything up
 wire key:out portmult:in1
@@ -29,4 +31,5 @@ wire vibmult:out filt:in
 wire filt:out delay:in
 wire delay:out speaker:left
 wire delay:out speaker:right
+wire flangelfo:out delay:delay
 

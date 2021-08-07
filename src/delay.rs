@@ -62,8 +62,11 @@ impl Module for Delay {
 
         // XXX show error if value is too large?  right now we silently wrap around
         if idx == 1 {
-            let Samples(delay) = Sec(value).into();
-            self.rpos = (delay as usize) % self.ring.len();
+            let Samples(delay_u64) = Sec(value).into();
+            let delay = delay_u64 as usize;
+        
+            // rpos lags wpos by delay samples.
+            self.rpos = (self.wpos + self.ring.len() - delay) % self.ring.len();
         }
     }
 
