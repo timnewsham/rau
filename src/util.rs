@@ -147,6 +147,61 @@ impl Module for Const {
     fn set_input(&mut self, _idx: usize, _value: f64) {
     }
     fn advance(&mut self) -> bool {
+        // constant value is already set
+        return true;
+    }
+}
+
+// bias an output by scaling it and adding an offset
+// width is a fraction of the offset.
+// When applied to an oscillator it will oscillate around bias by the width fraction.
+// With a width of 1.0 it will oscillate between 0 and 2*bias.
+pub struct Bias {
+    off: f64,
+    width: f64,
+    inp: f64,
+    val: f64,
+}
+
+impl Bias {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
+        if args.len() != 3 {
+            return Err(format!("usage: {} off width", args[0]));
+        }
+        let off = parse::<f64>("freq", args[1])?;
+        let width = parse::<f64>("freq", args[2])?;
+        // XXX sanity check off and width
+        Ok( modref_new(Self::new(off, width)) )
+    }
+
+    pub fn new(off: f64, width: f64) -> Self {
+        assert!(0.0 <= width && width <= 1.0);
+        Bias {
+            off: off,
+            width: width,
+            inp: 0.0,
+            val: 0.0,
+        }
+    }
+}
+
+impl Module for Bias {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
+        (vec!["in".to_string()],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 { Some(self.val) } else { None }
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        if idx == 0 { self.inp = value; }
+    }
+
+    fn advance(&mut self) -> bool {
+        let w = self.off * self.width;
+        self.val = self.off + w * self.inp;
         return true;
     }
 }
@@ -156,4 +211,5 @@ pub fn init(l: &mut Loader) {
     l.register("add", Add::from_cmd);
     l.register("inv", Inv::from_cmd);
     l.register("const", Const::from_cmd);
+    l.register("bias", Bias::from_cmd);
 }
