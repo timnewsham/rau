@@ -26,6 +26,7 @@ impl AllPass {
         self.inp = v;
     }
 
+    // ref: https://s3.amazonaws.com/embeddedrelated/user/14446/fig.%203_88181.jpg
     pub fn advance(&mut self) -> f64 {
         self.val = self.delay1 + self.g * (self.inp - self.delay2);
         self.delay1 = self.inp;
@@ -86,6 +87,8 @@ impl Phaser {
     pub fn set_input(&mut self, v: f64) {
         self.inp = v;
     }
+
+    // ref: https://ccrma.stanford.edu/realsimple/DelayVar/Phasing_First_Order_Allpass_Filters.html
     pub fn advance(&mut self) -> f64 {
         let inp = self.inp + self.fb * self.delay;
 
