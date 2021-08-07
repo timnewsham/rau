@@ -1,0 +1,9 @@
+[package]
+name = "flangerviz"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+eframe = "0.13.0"
+num-complex = "0.4.0"
+rau = { version = "0.1.0", path = ".." }
