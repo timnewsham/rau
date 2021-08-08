@@ -75,5 +75,11 @@ The `flangerviz` subdir contains a visualizer of the flanger's frequency respons
 
 ![flangerviz](notes/flangerviz.jpg)
 
+The `fftviz` subdir contains a spectrum visualizer for wav files. It reads
+from a `test.wav` file in the current directory and animates the spectrum in
+real time.
+
+![fftviz](notes/fftviz.jpg)
+
 The `player` subdir contains code to test a resampler implementation,
 playing a wav file at 44.1kHz to the audio device at 48kHz.
