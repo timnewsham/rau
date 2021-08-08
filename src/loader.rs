@@ -25,11 +25,13 @@ fn parse_terminal<'a>(name: &str, s: &'a str) -> Result<(&'a str, &'a str), Stri
 
 impl Loader {
     pub fn new() -> Self {
-        Self{ map: HashMap::new() }
+        let mut x = Self{ map: HashMap::new() };
+        x.init();
+        x
     }
 
     // Wish this could be done statically just once...
-    pub fn init(&mut self) {
+    fn init(&mut self) {
         crate::additive::init(self);
         crate::delay::init(self);
         crate::envelope::init(self);
@@ -46,6 +48,20 @@ impl Loader {
     pub fn register(&mut self, name: &'static str, f: ParseFn) {
         //println!("registered {}", name);
         self.map.insert(name, f);
+    }
+
+    pub fn show_usage(&self) {
+        let mut mods: Vec<_> = self.map.iter().collect();
+        mods.sort_by_key(|(nm, _)| *nm);
+        for (name, newfunc) in mods.iter() {
+            // ugly hack to get usage -- provide way too many args.
+            // will keep working until some module can take arbitrary number of args
+            if let Err(msg) = newfunc(&vec![name; 32]) {
+                println!("  {}", msg.replace("usage: ", ""));
+            } else {
+                println!("  {} ???", name);
+            }
+        }
     }
 
     fn proc_wire(&mut self, rack: &mut Rack, args: Vec<&str>) -> Result<(), String> {
@@ -81,7 +97,6 @@ impl Loader {
     }
 
     pub fn load(&mut self, fname: &str) -> Result<Rack, String> {
-        self.init();
         let file = File::open(fname).map_err(errstr)?;
 
         let mut rack = Rack::new();

@@ -16,13 +16,20 @@ which specify the source of a signal (must be an output of a module) and the
 destination of the signal (must be an input of a module).
 
 Currently defined module types are:
-* `envelope`
-* `file`
-* `filter`
-* `keyboard`
+* `add`
+* `bias off width`
+* `const val`
+* `delay depth dry feedback`
+* `envelope attack decay sustain release`
+* `file fname`
+* `filter filttype freq gain q`
+* `flange functype freq manual width feedback`
+* `inv`
+* `keyboard polltime`
 * `mult`
-* `osc`
-* `osc2`
+* `osc functype freq order`
+* `osc2 functype freq [amp off]`
+* `phaser functype freq width feedback`
 * `speaker`
 
 # Test programs
