@@ -9,4 +9,4 @@ cpal = "0.13.3"
 device_query = "0.2.8"
 
 [workspace]
-members = ["filtviz", "phaserviz", "flangerviz", "phaseviz", "genviz", "player"]
+members = ["filtviz", "phaserviz", "flangerviz", "fftviz", "phaseviz", "genviz", "player"]
