@@ -56,12 +56,24 @@ with sox or played directly:
 The `filtviz` subdir contains a frequency response viewer for
 the filter parameter generator.  Run with `cargo run -p filtviz`.
 
+![filtviz](notes/filtviz.jpg)
+
 The `phaseviz` subdir contains a phase meter. It reads in a file
 from the current directory named `test.wav` which should be a
 stereo file with 16-bit samples. Run with `cargo run -p phaseviz`.
 
 The `genviz` subdir contains a visualizer for the fourier series
 generator. Run with `cargo run -p genviz`.
+
+![genviz](notes/genviz.jpg)
+
+The `phaserviz` subdir contains a visualizer of the phaser's frequency response.
+
+![phaserviz](notes/phaserviz.jpg)
+
+The `flangerviz` subdir contains a visualizer of the flanger's frequency response.
+
+![flangerviz](notes/flangerviz.jpg)
 
 The `player` subdir contains code to test a resampler implementation,
 playing a wav file at 44.1kHz to the audio device at 48kHz.
