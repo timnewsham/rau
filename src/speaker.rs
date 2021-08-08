@@ -1,5 +1,5 @@
 
-use std::convert::Into;
+use std::convert::{Into, From};
 use std::sync::mpsc;
 use cpal::{BufferSize, StreamConfig, SampleRate};
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
@@ -8,10 +8,35 @@ use crate::units::{Samples, SAMPLE_RATE};
 use crate::resampler::Resampler;
 use crate::module::*;
 
+// belongs elsewhere
 #[derive(Clone, Copy)]
 pub struct Sample {
     pub left: f64,
     pub right: f64,
+}
+
+#[derive(Clone, Copy)]
+pub struct MidSide {
+    pub mid: f64,
+    pub side: f64,
+}
+
+impl From<Sample> for MidSide {
+    fn from(samp: Sample) -> MidSide {
+        MidSide { 
+            mid: (samp.right + samp.left) / 2.0, // mono mix-down
+            side: (samp.right - samp.left) / 2.0,
+        }
+    }
+}
+
+impl From<MidSide> for Sample {
+    fn from(ms: MidSide) -> Sample {
+        Sample {
+            left: ms.mid - ms.side, // 0.5(right + left) - 0.5(right - left) = left
+            right: ms.mid + ms.side, // 0.5(right + left) + 0.5(right - left) = right
+        }
+    }
 }
 
 pub struct Speaker {

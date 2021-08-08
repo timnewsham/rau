@@ -4,7 +4,7 @@ use std::cmp;
 use eframe::{egui, epi};
 use egui::{Color32, NumExt};
 use egui::widgets::plot::{Line, Values, Value, Plot};
-use rau::speaker::{Sample, ResamplingSpeaker};
+use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
 use rau::wav::read_wav;
 
 const FSAMP: f64 = 44100.0;
@@ -37,9 +37,7 @@ fn phase_curve(speaker: &mut ResamplingSpeaker, samps: &Vec<Sample>, from_t: f64
     let to = cmp::min((to_t * FSAMP) as usize, samps.len());
     let dat = (from..to).map(|i| {
             speaker.play(samps[i]);
-            let Sample{left: l, right: r} = samps[i];
-            let mid = 0.5 * (r + l);
-            let side = 0.5 * (r - l);
+            let MidSide{ mid, side } = samps[i].into();
             Value::new(side, mid)
         });
         // XXX lines for now, but perhaps better with points?

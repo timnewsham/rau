@@ -7,7 +7,7 @@ use eframe::{egui, epi};
 use egui::{Color32, NumExt, remap};
 use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
 use rustfft::*;
-use rau::speaker::{Sample, ResamplingSpeaker};
+use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
 use rau::wav::read_wav;
 
 const FSAMP: f64 = 44100.0;
@@ -57,8 +57,7 @@ fn to_db(pow: f64) -> f64 {
 //   midfft[n] = (Z[n] + Z*[N-n])/2
 //   sidefft[n] = -j * (Z[n] - Z*[n])/2 
 fn mid_side(s: &Sample) -> Complex<f64> {
-    let mid = 0.5 * (s.left + s.right);
-    let side = 0.5 * (s.left - s.right);
+    let MidSide{ mid, side } = (*s).into();
         //Complex{ re: mid, im: 0.0 } // XXX test dual-DFT out
         //Complex{ re: 0.0, im: mid } // XXX test dual-DFT out
     Complex{ re: mid, im: side }
