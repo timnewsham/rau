@@ -34,6 +34,7 @@ struct App {
     fft: Arc<dyn Fft<f64>>,
     midhist: Vec<f64>,
     sidehist: Vec<f64>,
+    alpha: f64,
 }
 
 #[allow(dead_code)]
@@ -84,6 +85,7 @@ impl App {
             fft: planner.plan_fft_forward(FFTSIZE),
             midhist: vec![0.0; FFTSIZE],
             sidehist: vec![0.0; FFTSIZE],
+            alpha: 0.5,
         }
     }
 
@@ -109,14 +111,11 @@ fn mid_side(s: &Sample) -> Complex<f64> {
     Complex{ re: mid, im: side }
 }
 
-// how much weight to give new values vs old values in history.
-// Smaller numbers give longer averaging periods.
-const ALPHA: f64 = 0.35;
-
 fn curve(_tx: &usize /*mpsc::SyncSender<(f32, f32)>*/, 
         fft: &Arc<dyn Fft<f64>>,
         midhist: &mut Vec<f64>,
         sidehist: &mut Vec<f64>,
+        alpha: f64,
         samps: &Vec<Sample>, from_t: f64, to_t: f64) -> (Line, Line)
 {
     // compute window size for FFTSIZE samples
@@ -145,8 +144,8 @@ fn curve(_tx: &usize /*mpsc::SyncSender<(f32, f32)>*/,
         let side = - Complex::<f64>::i() * (v[n] - v[FFTSIZE-n].conj()) / 2.0;
         let mid_db = to_db(mid.norm_sqr());
         let side_db = to_db(side.norm_sqr());
-        midhist[n] = mid_db * ALPHA + midhist[n] * (1.0 - ALPHA);
-        sidehist[n] = side_db * ALPHA + sidehist[n] * (1.0 - ALPHA);
+        midhist[n] = mid_db * alpha + midhist[n] * (1.0 - alpha);
+        sidehist[n] = side_db * alpha + sidehist[n] * (1.0 - alpha);
     }
 
     let dat1 = (3..FFTSIZE/2).map(|i| {
@@ -174,7 +173,7 @@ impl epi::App for App {
     //fn save(&mut self, _storage: &mut dyn epi::Storage) { }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let maxt = self.max_time();
-        let Self { tx, samples, time, fft, midhist, sidehist } = self;
+        let Self { tx, samples, time, fft, midhist, sidehist, alpha } = self;
         egui::TopBottomPanel::top("Filter Fun").show(ctx, |ui| {
             ui.ctx().request_repaint(); // always repaint, it advances our clock
 
@@ -185,11 +184,12 @@ impl epi::App for App {
             } else {
                 *time = 0.0;
             }
-            ui.heading(format!("Controls - time {:.01}   samples {:.0}", starttime, (endtime-starttime)*FSAMP));
+            //ui.heading(format!("Controls - time {:.01}   samples {:.0}", starttime, (endtime-starttime)*FSAMP));
             ui.heading("Controls");
+            ui.add(egui::Slider::new(alpha, 0.01..=0.99).text("Alpha"));
             ui.add(egui::Slider::new(time, 0.0..=maxt).text("Time"));
 
-            let (curve1, curve2) = curve(&*tx, &*fft, &mut *midhist, &mut *sidehist, samples, starttime, endtime);
+            let (curve1, curve2) = curve(&*tx, &*fft, &mut *midhist, &mut *sidehist, *alpha, samples, starttime, endtime);
             let plot = Plot::new("phase plot")
                 .line(curve1)
                 .line(curve2)
