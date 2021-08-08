@@ -16,7 +16,9 @@ pub struct Sec(pub f64);
 
 // time in samples
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
-pub struct Samples(pub u64);
+pub struct Samples(pub usize);
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct FracSamples(pub usize, pub f64);
 
 impl From<Samples> for Sec {
     fn from(x: Samples) -> Sec {
@@ -26,7 +28,16 @@ impl From<Samples> for Sec {
 
 impl From<Sec> for Samples {
     fn from(x: Sec) -> Samples {
-        Samples((SAMPLE_RATE * x.0) as u64)
+        Samples((SAMPLE_RATE * x.0) as usize)
+    }
+}
+
+impl From<Sec> for FracSamples {
+    fn from(x: Sec) -> FracSamples {
+        let samps = x.0 * SAMPLE_RATE;
+        let whole_samps = samps.floor();
+        let frac_samps = samps - whole_samps;
+        FracSamples(whole_samps as usize, frac_samps)
     }
 }
 

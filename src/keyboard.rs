@@ -7,10 +7,10 @@ use crate::module::*;
 pub struct Keyboard {
     dev: DeviceState,
     keymap: Vec<(Keycode, f64)>,
-    poll_time: u64,
+    poll_time: usize,
 
     oldkeys: Vec<Keycode>,
-    timer: u64,
+    timer: usize,
     val: f64,
     oct: f64,
     gate: bool,
