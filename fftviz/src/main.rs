@@ -8,7 +8,7 @@ use eframe::{egui, epi};
 use egui::{Color32, NumExt, remap};
 use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
 use rustfft::*;
-use rau::speaker::{Sample, Speaker};
+use rau::speaker::{Sample, ResamplingSpeaker};
 
 const FSAMP: f64 = 48000.0;
 const MAXHZ: f64 = 0.5 * FSAMP;
@@ -16,7 +16,7 @@ const FFTSIZE: usize = 1024;
 const MINDB: f64 = -60.0;
 
 struct App {
-    speaker: Speaker,
+    speaker: ResamplingSpeaker,
     samples: Vec<Sample>,
     time: f64,
     fft: Arc<dyn Fft<f64>>,
@@ -41,7 +41,7 @@ fn read_wav_into(path: &str, samples: &mut Vec<Sample>) {
 
 impl App {
     fn from_file(path: &str) -> Self {
-        let speaker = Speaker::new_full(FSAMP, 1000);
+        let speaker = ResamplingSpeaker::new_441_to_480(1000);
         let mut samples = Vec::new();
         read_wav_into(path, &mut samples);
         let mut planner = FftPlanner::new();
@@ -79,7 +79,7 @@ fn mid_side(s: &Sample) -> Complex<f64> {
     Complex{ re: mid, im: side }
 }
 
-fn curve(speaker: &mut Speaker,
+fn curve(speaker: &mut ResamplingSpeaker,
         fft: &Arc<dyn Fft<f64>>,
         midhist: &mut Vec<f64>,
         sidehist: &mut Vec<f64>,
