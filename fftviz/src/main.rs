@@ -1,4 +1,5 @@
 
+use std::env::args;
 use std::sync::Arc;
 use std::cmp;
 use num_complex::Complex;
@@ -79,11 +80,11 @@ fn curve(speaker: &mut ResamplingSpeaker,
     }
 
     if to >= FFTSIZE {
-        from = to - (FFTSIZE - 1);
+        from = to - FFTSIZE;
     } else {
-        to = from + (FFTSIZE - 1);
+        to = from + FFTSIZE;
     }
-    assert!(to - from == FFTSIZE - 1 && from < samps.len() && to < samps.len());
+    assert!(to - from == FFTSIZE && from < samps.len() && to <= samps.len());
 
     // gather window and fft
     // note: we're doing two FFT's here because real=mid and imaj=side
@@ -161,7 +162,10 @@ impl epi::App for App {
 }
 
 fn main() {
-    let app = App::from_file("test.wav");
+    let args: Vec<String> = args().collect();
+    let path = if args.len() > 1 { &args[1] } else { "test.wav" };
+
+    let app = App::from_file(path);
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = false;
     eframe::run_native(Box::new(app), native_options);

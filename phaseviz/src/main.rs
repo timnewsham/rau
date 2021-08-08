@@ -1,4 +1,5 @@
 
+use std::env::args;
 use std::cmp;
 use eframe::{egui, epi};
 use egui::{Color32, NumExt};
@@ -37,8 +38,8 @@ fn phase_curve(speaker: &mut ResamplingSpeaker, samps: &Vec<Sample>, from_t: f64
     let dat = (from..to).map(|i| {
             speaker.play(samps[i]);
             let Sample{left: l, right: r} = samps[i];
-            let mid = 0.5 * (l + r);
-            let side = 0.5 * (l - r);
+            let mid = 0.5 * (r + l);
+            let side = 0.5 * (r - l);
             Value::new(side, mid)
         });
         // XXX lines for now, but perhaps better with points?
@@ -81,7 +82,10 @@ impl epi::App for App {
 }
 
 fn main() {
-    let app = App::from_file("test.wav");
+    let args: Vec<String> = args().collect();
+    let path = if args.len() > 1 { &args[1] } else { "test.wav" };
+
+    let app = App::from_file(path);
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = false;
     eframe::run_native(Box::new(app), native_options);

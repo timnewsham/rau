@@ -6,7 +6,7 @@ use crate::speaker::Sample;
 fn cvt_pairs<T: Copy, F: Fn(T) -> f64>(vs: &Vec<T>, cvt: F) -> Vec<Sample> {
     (0..vs.len())
         .step_by(2)
-        .map(|i| Sample{ right: cvt(vs[i]), left: cvt(vs[i+1]) })
+        .map(|i| Sample{ left: cvt(vs[i]), right: cvt(vs[i+1]) })
         .collect()
 }
 
