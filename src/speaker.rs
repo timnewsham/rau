@@ -16,11 +16,12 @@ pub struct Sample {
 
 pub struct Speaker {
     tx: mpsc::SyncSender<Sample>,
-    lvalue: f64,
-    rvalue: f64,
 
     #[allow(dead_code)]
-    stream: cpal::Stream, // held until speaker is discarded
+    stream: cpal::Stream, // held for reference
+
+    lvalue: f64,
+    rvalue: f64,
 }
 
 impl Speaker {
@@ -47,9 +48,13 @@ impl Speaker {
 
         let pump_func = move |dat: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 for n in (0..dat.len()).step_by(2) {
-                    let sample: Sample = rx.recv().expect("error receiving audio");
-                    dat[n] = sample.left as f32;
-                    dat[n+1] = sample.right as f32;
+                    match rx.recv() {
+                        Err(_) => break,
+                        Ok(Sample{ left, right }) => {
+                            dat[n] = left as f32;
+                            dat[n+1] = right as f32;
+                        },
+                    }
                 }
             };
         let err_func = |err| { eprintln!("audio output error: {}", err); };
