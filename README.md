@@ -62,7 +62,7 @@ The `phaseviz` subdir contains a phase meter. It reads in a file
 from the current directory named `test.wav` which should be a
 stereo file with 16-bit samples at 44.1kHz. It visualizes the phases
 as it plays the audio. Run with `cargo run -p phaseviz`.
-Note: There's currently a bug where crashes can occur when quitting.
+
 ![phaseviz](notes/phaseviz.jpg)
 
 The `genviz` subdir contains a visualizer for the fourier series
@@ -81,7 +81,6 @@ The `flangerviz` subdir contains a visualizer of the flanger's frequency respons
 The `fftviz` subdir contains a spectrum visualizer for wav files. It reads
 from a `test.wav` file in the current directory and animates the spectrum in
 real time.
-Note: There's currently a bug where crashes can occur when quitting.
 
 ![fftviz](notes/fftviz.jpg)
 
