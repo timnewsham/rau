@@ -1,11 +1,10 @@
 
 use std::cmp;
-use std::fs::File;
-use wav::{self, bit_depth::BitDepth};
 use eframe::{egui, epi};
 use egui::{Color32, NumExt};
 use egui::widgets::plot::{Line, Values, Value, Plot};
 use rau::speaker::{Sample, ResamplingSpeaker};
+use rau::wav::read_wav;
 
 const FSAMP: f64 = 44100.0;
 
@@ -15,25 +14,10 @@ struct App {
     time: f64,
 }
 
-fn read_wav_into(path: &str, samples: &mut Vec<Sample>) {
-    let mut inp = File::open(path).expect("couldnt open file");
-    let (_hdr, dat) = wav::read(&mut inp).expect("couldn't read samples");
-    if let BitDepth::Sixteen(vs) = dat {
-        for i in (0..vs.len()).step_by(2) {
-            let right = (vs[i] as f64) / 32768.0;
-            let left = (vs[i+1] as f64) / 32768.0;
-            samples.push(Sample{ left: left, right: right } );
-        }
-    } else {
-        panic!("wrong format");
-    }
-}
-
 impl App {
     fn from_file(path: &str) -> Self {
         let speaker = ResamplingSpeaker::new_441_to_480(1000);
-        let mut samples = Vec::new();
-        read_wav_into(path, &mut samples);
+        let samples = read_wav(path, FSAMP);
 
         App {
             speaker: speaker,

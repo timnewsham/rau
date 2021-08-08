@@ -15,4 +15,5 @@ pub mod simple;
 pub mod speaker;
 pub mod units;
 pub mod util;
+pub mod wav;
 
