@@ -10,7 +10,7 @@ use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
 use rustfft::*;
 use rau::speaker::{Sample, ResamplingSpeaker};
 
-const FSAMP: f64 = 48000.0;
+const FSAMP: f64 = 44100.0;
 const MAXHZ: f64 = 0.5 * FSAMP;
 const FFTSIZE: usize = 1024;
 const MINDB: f64 = -60.0;

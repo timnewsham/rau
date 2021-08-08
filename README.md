@@ -60,7 +60,10 @@ the filter parameter generator.  Run with `cargo run -p filtviz`.
 
 The `phaseviz` subdir contains a phase meter. It reads in a file
 from the current directory named `test.wav` which should be a
-stereo file with 16-bit samples. Run with `cargo run -p phaseviz`.
+stereo file with 16-bit samples at 44.1kHz. It visualizes the phases
+as it plays the audio. Run with `cargo run -p phaseviz`.
+Note: There's currently a bug where crashes can occur when quitting.
+![phaseviz](notes/phaseviz.jpg)
 
 The `genviz` subdir contains a visualizer for the fourier series
 generator. Run with `cargo run -p genviz`.
@@ -82,4 +85,6 @@ real time.
 ![fftviz](notes/fftviz.jpg)
 
 The `player` subdir contains code to test a resampler implementation,
-playing a wav file at 44.1kHz to the audio device at 48kHz.
+playing a wav file at 44.1kHz to the audio device at 48kHz. It plays the
+audio while visualizaing.
+Note: There's currently a bug where crashes can occur when quitting.
