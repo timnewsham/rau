@@ -5,6 +5,7 @@ use cpal::{BufferSize, StreamConfig, SampleRate};
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use crate::units::{Samples, SAMPLE_RATE};
+use crate::resampler::Resampler;
 use crate::module::*;
 
 #[derive(Clone, Copy)]
@@ -98,4 +99,24 @@ impl Module for Speaker {
 
 pub fn init(l: &mut Loader) {
     l.register("speaker", Speaker::from_cmd);
+}
+
+pub struct ResamplingSpeaker {
+    resampler: Resampler,
+    speaker: Speaker,
+}
+
+impl ResamplingSpeaker {
+    // Consumes 44.1KHz audio and plays on 48KHz audio speaker
+    pub fn new_441_to_480(qsize: usize) -> Self {
+        Self {
+            resampler: Resampler::new_441_to_480(),
+            speaker: Speaker::new_full(48000.0, qsize),
+        }
+    }
+
+    pub fn play(&mut self, sample: Sample) {
+        let Self{ resampler, speaker } = self;
+        resampler.resample(sample, |s| speaker.play(s));
+    }
 }

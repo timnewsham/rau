@@ -10,6 +10,7 @@ pub mod keyboard;
 pub mod loader;
 pub mod module;
 pub mod phaser;
+pub mod resampler;
 pub mod simple;
 pub mod speaker;
 pub mod units;
