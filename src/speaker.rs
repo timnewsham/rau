@@ -86,7 +86,7 @@ impl Speaker {
         let stream = dev.build_output_stream(&cfg, pump_func, err_func).expect("cant open audio");
         stream.play().expect("error starting audio");
 
-        Speaker{ tx: tx, rvalue: 0.0, lvalue: 0.0, stream: stream }
+        Speaker{ tx, rvalue: 0.0, lvalue: 0.0, stream }
     }
 
     pub fn play(&mut self, sample: Sample) {
@@ -123,7 +123,7 @@ impl Module for Speaker {
 
     fn advance(&mut self) -> bool {
         self.play(Sample{ left: self.lvalue, right: self.rvalue, });
-        return true;
+        true
     }
 }
 

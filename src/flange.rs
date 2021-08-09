@@ -39,10 +39,10 @@ impl Flange {
         let lfo = Osc::new(func, freq);
         let delay = Delay::new(Sec(MAXDELAY), 1.0, fb);
         Flange { 
-            delay: delay,
-            lfo: lfo,
-            manual: manual,
-            width: width,
+            delay,
+            lfo,
+            manual,
+            width,
             val: 0.0,
         }
     }
@@ -95,7 +95,7 @@ impl Module for Flange {
 
     fn get_output(&self, idx: usize) -> Option<f64> {
         if idx == 0 { return Some(self.val); }
-        return None;
+        None
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
@@ -105,7 +105,7 @@ impl Module for Flange {
 
     fn advance(&mut self) -> bool {
         Flange::advance(self);
-        return true;
+        true
     }
 }
 

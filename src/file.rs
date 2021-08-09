@@ -7,8 +7,7 @@ use crate::module::*;
 
 fn conv(x: f64) -> (u8, u8) {
     let val = (32767.0 * x.clamp(-1.0, 1.0)) as i16;
-    ((val as u16 >> 8) as u8,
-     (val as u16 & 0xffff) as u8)
+    ((val as u16 >> 8) as u8, val as u8)
 }
 
 pub struct Tape {
@@ -41,7 +40,7 @@ impl Tape {
             m.advance();
             let val = m.get_output(out_idx).ok_or("can't read gen output")?;
             let (a,b) = conv(val);
-            self.f.write(&[a, b]).map_err(|_| "can't write file")?;
+            self.f.write_all(&[a, b]).map_err(|_| "can't write file")?;
         }
         Ok(())
     }
@@ -65,8 +64,8 @@ impl Module for Tape {
 
     fn advance(&mut self) -> bool {
         let (a,b) = conv(self.val);
-        self.f.write(&[a, b]).expect("cant write");
-        return true;
+        self.f.write_all(&[a, b]).expect("cant write");
+        true
     }
 }
 

@@ -93,9 +93,9 @@ impl Module for Envelope {
                 self.val = self.sustain + (self.val - self.sustain) * self.decay;
             },
         EnvMode::Release =>
-            self.val = self.val * self.release,
+            self.val *= self.release,
         };
-        return true;
+        true
     }
 
     fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {

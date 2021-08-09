@@ -36,7 +36,7 @@ impl Module for Mult {
     }
     fn advance(&mut self) -> bool {
         self.out = self.in1 * self.in2;
-        return true;
+        true
     }
 }
 
@@ -75,7 +75,7 @@ impl Module for Add {
     }
     fn advance(&mut self) -> bool {
         self.out = self.in1 + self.in2;
-        return true;
+        true
     }
 }
 
@@ -112,7 +112,7 @@ impl Module for Inv {
     }
     fn advance(&mut self) -> bool {
         self.out = -self.inp;
-        return true;
+        true
     }
 }
 
@@ -148,7 +148,7 @@ impl Module for Const {
     }
     fn advance(&mut self) -> bool {
         // constant value is already set
-        return true;
+        true
     }
 }
 
@@ -175,8 +175,8 @@ impl Bias {
 
     pub fn new(off: f64, width: f64) -> Self {
         Bias {
-            off: off,
-            width: width,
+            off,
+            width,
             inp: 0.0,
             val: 0.0,
         }
@@ -199,7 +199,7 @@ impl Module for Bias {
 
     fn advance(&mut self) -> bool {
         self.val = self.off + self.width * self.inp;
-        return true;
+        true
     }
 }
 

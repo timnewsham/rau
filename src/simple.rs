@@ -47,12 +47,10 @@ fn triangle(phase: f64) -> f64 {
 
     if v <= 1.0 {
         v                   // (0 .. 1.0) -> (0 .. 1.0)
+    } else if v <= 3.0 {
+        2.0 - v             // (1.0 .. 3.0) -> (1.0 .. -1.0)
     } else {
-        if v <= 3.0 {
-            2.0 - v         // (1.0 .. 3.0) -> (1.0 .. -1.0)
-        } else {
-            v - 4.0         // (3.0 .. 4.0) -> (-1.0 .. 0.0)
-        }
+        v - 4.0             // (3.0 .. 4.0) -> (-1.0 .. 0.0)
     }
 }
 
@@ -84,8 +82,8 @@ impl Gen {
         Self {
             phase: 0.0,
             velocity: freq.into(),
-            amp: amp,
-            off: off,
+            amp,
+            off,
             func: get_func(typ),
             val: 0.0,
         }
@@ -142,7 +140,7 @@ impl Module for Gen {
 
     fn advance(&mut self) -> bool {
         Gen::advance(self);
-        return true;
+        true
     }
 }
 

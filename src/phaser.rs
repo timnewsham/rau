@@ -15,7 +15,7 @@ pub struct AllPass {
 
 impl AllPass {
     pub fn new(g: f64) -> Self {
-        AllPass { g: g, delay1: 0.0, delay2: 0.0, inp: 0.0, val: 0.0 }
+        AllPass { g, delay1: 0.0, delay2: 0.0, inp: 0.0, val: 0.0 }
     }
 
     pub fn set_g(&mut self, g: f64) {
@@ -72,8 +72,8 @@ impl Phaser {
             f2: AllPass::new(g4 / 4.0),
             f3: AllPass::new(g4 / 2.0),
             f4: AllPass::new(g4 / 1.0),
-            width: width,
-            fb: fb,
+            width,
+            fb,
             delay: 0.0,
             inp: 0.0,
             val: 0.0,
@@ -124,7 +124,7 @@ impl Module for Phaser {
 
     fn get_output(&self, idx: usize) -> Option<f64> {
         if idx == 0 { return Some(self.val); }
-        return None;
+        None
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
@@ -134,7 +134,7 @@ impl Module for Phaser {
 
     fn advance(&mut self) -> bool {
         Phaser::advance(self);
-        return true;
+        true
     }
 }
 

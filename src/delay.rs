@@ -37,8 +37,8 @@ impl Delay {
         let FracSamples(maxd,_) = maxdelay.into();
         Self{
             ring: vec![0.0; maxd + 2],
-            dry: dry,
-            fb: fb,
+            dry,
+            fb,
             inp: 0.0,
             val: 0.0,
             rpos: 1,
@@ -96,7 +96,7 @@ impl Module for Delay {
 
     fn get_output(&self, idx: usize) -> Option<f64> {
         if idx == 0 { return Some(self.val); }
-        return None;
+        None
     }
 
     fn set_input(&mut self, idx: usize, value: f64) {
@@ -108,7 +108,7 @@ impl Module for Delay {
 
     fn advance(&mut self) -> bool {
         Delay::advance(self);
-        return true;
+        true
     }
 }
 

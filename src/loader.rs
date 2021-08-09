@@ -15,7 +15,7 @@ fn errstr(e: impl ToString) -> String {
 }
 
 fn parse_terminal<'a>(name: &str, s: &'a str) -> Result<(&'a str, &'a str), String> {
-    let v: Vec<&str> = s.splitn(2, ":").collect();
+    let v: Vec<&str> = s.splitn(2, ':').collect();
     if v.len() != 2 {
         Err(format!("bad terminal format for wire {} '{}'", name, s))
     } else {
@@ -105,7 +105,7 @@ impl Loader {
 
             // strip comments
             let mut ws: Vec<&str> = line.split_whitespace().collect();
-            if let Some(comment) = ws.iter().position(|s| s.starts_with("#")) {
+            if let Some(comment) = ws.iter().position(|s| s.starts_with('#')) {
                 ws.resize(comment, ""); // strip comments
             }
 

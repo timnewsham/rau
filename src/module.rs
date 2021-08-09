@@ -62,7 +62,8 @@ pub trait Module {
     fn set_named_input(&mut self, mod_name: &str, name: &str, val: f64) -> Result<(), String> {
         let idx = self.input_idx(mod_name, name)?;
         // XXX set_input should report errors
-        Ok(self.set_input(idx, val))
+        self.set_input(idx, val);
+        Ok(())
     }
 
     fn get_named_output(&self, mod_name: &str, name: &str) -> Result<f64, String> {
@@ -156,7 +157,7 @@ impl Rack {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     pub fn set_input(&mut self, mod_name: &str, in_name: &str, val: f64) -> Result<(), String> {

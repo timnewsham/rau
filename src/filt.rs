@@ -58,10 +58,10 @@ impl Filter {
     pub fn new(typ: FiltType, freq: impl Into<RadPS>, gain: f64, q: f64) -> Self {
         let RadPS(w) = freq.into();
         let mut v = Self { 
-            typ: typ,
+            typ,
             freq: w,
-            gain: gain,
-            q: q,
+            gain,
+            q,
             ..Default::default() 
         };
         v.recalc();
@@ -178,7 +178,7 @@ impl Module for Filter {
         self.delay2 = self.delay1;
         self.delay1 = delay0;
         //println!("{:?}", self);
-        return true;
+        true
     }
 }
 

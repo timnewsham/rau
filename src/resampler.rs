@@ -26,13 +26,13 @@ impl Resampler {
     pub fn new(n: usize, m: usize, atten: f64, cutoff: f64, order: usize) -> Self {
         let filt = Self::make_fir(n, atten, cutoff, order);
         Resampler {
-            n: n,
-            m: m,
+            n,
+            m,
             phasefilt: filt,
             delayl: vec![0.0; order],
             delayr: vec![0.0; order],
             delaypos: 0,
-            order: order,
+            order,
             phase: 0,
         }
     }

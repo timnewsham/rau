@@ -39,18 +39,18 @@ fn get_series(func: Function, n: usize) -> Vec<HarmonicParam> {
     match func {
         Function::SIN => vec![HarmonicParam{ k: 1, amp: 1.0 }],
         Function::SAWUP => (1..=n).map(|k|
-                HarmonicParam{ k: k, amp: -2.0 * powneg1(k) / (k as f64 * PI) }
+                HarmonicParam{ k, amp: -2.0 * powneg1(k) / (k as f64 * PI) }
             ).collect(),
         Function::SAWDOWN => (1..=n).map(|k|
-                HarmonicParam{ k: k, amp: 2.0 * powneg1(k) / (k as f64 * PI) }
+                HarmonicParam{ k, amp: 2.0 * powneg1(k) / (k as f64 * PI) }
             ).collect(),
         Function::TRI => (1..=n).map(|nn| {
                 let k = 2*nn - 1; // odd harmonics
-                HarmonicParam{ k: k, amp: 8.0 * powneg1((k-1)/2) / (k as f64 * PI).powf(2.0) }
+                HarmonicParam{ k, amp: 8.0 * powneg1((k-1)/2) / (k as f64 * PI).powf(2.0) }
             }).collect(),
         Function::SQUARE => (1..=n).map(|nn| {
                 let k = 2*nn - 1; // odd harmonics
-                HarmonicParam{ k: k, amp: -4.0 * powneg1(k) / (k as f64 * PI) }
+                HarmonicParam{ k, amp: -4.0 * powneg1(k) / (k as f64 * PI) }
             }).collect(),
     }
 }
@@ -141,7 +141,7 @@ impl Module for Gen {
 
     fn advance(&mut self) -> bool {
         Gen::advance(self);
-        return true;
+        true
     }
 }
 

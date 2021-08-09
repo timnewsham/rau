@@ -1,4 +1,5 @@
 
+use std::cmp::Ordering;
 use crate::units::SAMPLE_RATE;
 use crate::module::*;
 
@@ -14,23 +15,25 @@ pub fn plot1(x: f64) {
     let mut off = (((x * width as f64) / 2.0) as i64) + center;
     if off < 1 { off = 1; }
     if off > 78 { off = 78; }
-    if off == center {
-        repeat(' ', center-1);
-        repeat('*', 1);
-        repeat('\n', 1);
-    } else if off < center {
-        repeat(' ', off-1);
-        repeat('*', 1);
-        repeat('-', center-off-1);
-        repeat('|', 1);
-        repeat('\n', 1);
-    } else {
-        repeat(' ', center-1);
-        repeat('|', 1);
-        repeat('-', off-center-1);
-        repeat('*', 1);
-        repeat('\n', 1);
+    match off.cmp(&center) {
+        Ordering::Equal => {
+            repeat(' ', center-1);
+            repeat('*', 1);
+        },
+        Ordering::Less => {
+            repeat(' ', off-1);
+            repeat('*', 1);
+            repeat('-', center-off-1);
+            repeat('|', 1);
+        },
+        Ordering::Greater => {
+            repeat(' ', center-1);
+            repeat('|', 1);
+            repeat('-', off-center-1);
+            repeat('*', 1);
+        },
     }
+    repeat('\n', 1);
 }
 
 const DECIMATE : i64 = 44100 / 30;
@@ -45,7 +48,7 @@ pub fn plot(m: &mut impl Module, outp: &str) -> Result<(), String> {
         m.advance();
     }
     //println!("Cost {:?}", gen.cost());
-    println!("");
+    println!();
     Ok(())
 }
 

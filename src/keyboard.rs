@@ -77,7 +77,7 @@ impl Keyboard {
     pub fn new(poll: impl Into<Samples>) -> Self {
         println!("  W E   T Y U   O P   ");
         println!(" A S D F G H J K L ; '");
-        println!("");
+        println!();
         println!("Z - oct down, X - oct up");
         println!("Hit [Esc] to exit");
         let Samples(time) = poll.into();
@@ -97,9 +97,9 @@ impl Keyboard {
 
 fn get_note(keymap: &Vec<(Keycode, f64)>, keys: &Vec<Keycode>) -> Option<f64> {
     for (code, val) in keymap.iter() {
-        if keys.contains(&code) { return Some(*val); }
+        if keys.contains(code) { return Some(*val); }
     }
-    return None;
+    None
 }
 
 impl Module for Keyboard {
@@ -114,7 +114,7 @@ impl Module for Keyboard {
         if idx == 0 { return Some(self.val); }
         if idx == 1 { return Some(if self.gate { 1.0 } else {0.0}); }
         if idx == 2 { return Some(if self.quit { 1.0 } else {0.0}); }
-        return None;
+        None
     }
 
     fn set_input(&mut self, _idx: usize, _value: f64) {
@@ -148,13 +148,11 @@ impl Module for Keyboard {
             let Hz(freq) = Cent(self.oct + note).into();
             self.val = freq;
             //println!("cent {} freq {}", (self.oct + note)/100.0, freq);
+        } else if let Some(_oldnote) = get_note(&self.keymap, &self.oldkeys) {
+            // keep the gate on because an old note is still pressed
+            self.gate = true;
         } else {
-            if let Some(_oldnote) = get_note(&self.keymap, &self.oldkeys) {
-                // keep the gate on because an old note is still pressed
-                self.gate = true;
-            } else {
-                self.gate = false;
-            }
+            self.gate = false;
         }
         self.oldkeys = newkeys;
 
