@@ -3,7 +3,7 @@ use std::env::args;
 //use std::cmp;
 use eframe::{egui, epi};
 use egui::Color32;
-use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
+use egui::widgets::plot::{Line, Points, Values, Value, Plot, Legend};
 //use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
 use rau::wav::{read_wav, Sample};
 use rau::pitch::Pitch;
@@ -24,14 +24,14 @@ impl App {
     }
 }
 
-fn curve(pitches: &Vec<(Option<Cent>, f64)>) -> (Line, Line)
+fn curve(pitches: &Vec<(Option<Cent>, f64)>) -> (Points, Line)
 {
-    let dat1 = pitches.iter().enumerate().map(|(n,p)| {
-            let Cent(cent) = p.0.unwrap_or(Cent(-1000.0));
+    let dat1 = pitches.iter().enumerate().filter(|(n,p)| p.0.is_some()).map(|(n,p)| {
+            let Cent(cent) = p.0.unwrap();
             let Sec(sec) = Samples(n).into();
             Value::new(sec, cent)
         });
-    let l1 = Line::new(Values::from_values_iter(dat1))
+    let p1 = Points::new(Values::from_values_iter(dat1))
         .color(Color32::from_rgb(100, 200, 100))
         .name("Cents");
 
@@ -42,7 +42,7 @@ fn curve(pitches: &Vec<(Option<Cent>, f64)>) -> (Line, Line)
     let l2 = Line::new(Values::from_values_iter(dat2))
         .color(Color32::from_rgb(200, 100, 100))
         .name("Corr");
-    (l1, l2)
+    (p1, l2)
 }
 
 
@@ -54,7 +54,7 @@ impl epi::App for App {
             ui.heading("Controls");
             let (curve1, curve2) = curve(&*pitches);
             let plot = Plot::new("pitch plot")
-                .line(curve1)
+                .points(curve1)
                 .line(curve2)
                 .view_aspect(1.5)
                 .legend(Legend::default())
@@ -68,9 +68,17 @@ fn main() {
     let args: Vec<String> = args().collect();
     let path = if args.len() > 1 { &args[1] } else { "pitch.wav" };
 
+    println!("read file");
     let samples = read_wav(path, FSAMP);
+    println!("compute pitches");
     let mut p = Pitch::new(Sec(0.050), Sec(0.010));
-    let dat: Vec<(Option<Cent>, f64)> = samples.iter().map(|Sample{left, right:_}| p.add_sample(*left)).collect();
+    let mut dat: Vec<(Option<Cent>, f64)> = Vec::new();
+    for Sample{left, right: _} in samples {
+        if let Some(x) = p.add_sample2(left) {
+            dat.push(x);
+        }
+    }
+    println!("gui");
 
     let app = App::new(dat);
     let mut native_options = eframe::NativeOptions::default();

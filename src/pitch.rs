@@ -40,8 +40,8 @@ fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
                 .zip(&data[delay..data.len()])
                 .map(|(a,b)| a*b)
                 .sum();
-    //r / data.len() as f64
-    r
+    r / data.len() as f64
+    //r
 }
 
 fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<Samples>, f64) {
@@ -90,8 +90,8 @@ impl Pitch {
         }
     }
 
-    // return detected pitch and the normalized correlation
-    pub fn add_sample(&mut self, samp: f64) -> (Option<Cent>, f64) {
+    // return detected pitch and the normalized correlation, only when there is a newly computed value
+    pub fn add_sample2(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
         self.data.push(samp);
         if self.data.len() == self.size {
             //let windata = window(&self.data, &self.window);
@@ -101,8 +101,16 @@ impl Pitch {
 
             // shift over the last "overlap" elements to start of vec
             self.data.drain(0 .. self.size - self.overlap);
+            Some((self.note, self.corr))
+        } else {
+            None
         }
-        (self.note, self.corr)
+    }
+
+    // return the detected pitch, one value per input sample
+    pub fn add_sample(&mut self, samp: f64) -> Option<Cent> {
+        self.add_sample2(samp);
+        self.note
     }
 }
 

@@ -219,9 +219,9 @@ fn show_pitch() {
     let samps = read_wav("pitch.wav", 48000.0);
     let mut last_note = None;
     for Sample{left, right: _} in samps {
-        let (note,_) = p.add_sample(left);
+        let note = p.add_sample(left);
         if note != last_note {
-            println!("{:?}", p.add_sample(left));
+            println!("{:?}", note);
         }
         last_note = note;
     }
