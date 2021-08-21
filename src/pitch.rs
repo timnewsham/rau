@@ -3,15 +3,15 @@
 use crate::units::{Samples, Hz, Cent, Sec};
 //use crate::module::*;
 
-const THRESH: f64 = 0.85; // threshold for detection as a factor of r0
+const THRESH: f64 = 0.75; // threshold for detection as a factor of r0
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
+// XXX use a downsampler for perf. 2^4 * 440 = 7040hz. we can downsample by 6, 48k->8k
 pub struct Pitch {
     pub data: Vec<f64>, // XXX use dequeue?
-    //pub window: Vec<f64>,
     size: usize,
     overlap: usize, // overlap < size
     minscan: Samples,
@@ -20,22 +20,6 @@ pub struct Pitch {
     pub corr: f64,
 }
 
-/*
-fn make_window(n: usize) -> Vec<f64> {
-    // using a simple sine window. the shape shouldnt be that important...
-    (1..n+1)
-        .map(|k| (PI * k as f64 / (n+1) as f64).sin())
-        .collect()
-}
-
-fn window(data: &Vec<f64>, window: &Vec<f64>) -> Vec<f64> {
-    data.iter()
-        .zip(window)
-        .map(|(a,b)| a*b)
-        .collect()
-}
-*/
-
 fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     let r : f64 = data[0..data.len() - delay]
                 .iter()
@@ -43,7 +27,6 @@ fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
                 .map(|(a,b)| a*b)
                 .sum();
     r / data.len() as f64
-    //r
 }
 
 fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<Samples>, f64) {
@@ -78,10 +61,8 @@ impl Pitch {
         let Samples(winsamples) = winsz.into();
         let Samples(overlapsamples) = overlap.into();
         assert!(overlapsamples < winsamples);
-        //println!("size {} overlap {}", winsamples, overlapsamples);
         Self {
             data: Vec::new(),
-            //window: make_window(winsamples),
             size: winsamples,
             overlap: overlapsamples,
             // note: min becomes max and vice versa, because we're converting from freqs to periods
@@ -96,7 +77,6 @@ impl Pitch {
     pub fn add_sample2(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
         self.data.push(samp);
         if self.data.len() == self.size {
-            //let windata = window(&self.data, &self.window);
             let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
             self.note = optnote.map(period_to_note);
             self.corr = corr;
