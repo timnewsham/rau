@@ -215,11 +215,11 @@ fn test_pitch() {
 }
 
 fn show_pitch() {
-    let mut p = rau::pitch::Pitch::new(Sec(0.010), Sec(0.003));
+    let mut p = rau::pitch::Pitch::new(Sec(0.050), Sec(0.010));
     let samps = read_wav("pitch.wav", 48000.0);
     let mut last_note = None;
     for Sample{left, right: _} in samps {
-        let note = p.add_sample(left);
+        let (note,_) = p.add_sample(left);
         if note != last_note {
             println!("{:?}", p.add_sample(left));
         }

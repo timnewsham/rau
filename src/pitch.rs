@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use crate::units::{Samples, Hz, Cent, Sec};
 //use crate::module::*;
 
-const THRESH: f64 = 0.7; // threshold for detection as a factor of r0
+const THRESH: f64 = 0.85; // threshold for detection as a factor of r0
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
@@ -17,6 +17,7 @@ pub struct Pitch {
     minscan: Samples,
     maxscan: Samples,
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
+    pub corr: f64,
 }
 
 fn make_window(n: usize) -> Vec<f64> {
@@ -34,25 +35,30 @@ fn window(data: &Vec<f64>, window: &Vec<f64>) -> Vec<f64> {
 }
 
 fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
-    data[0..data.len() - delay]
-        .iter()
-        .zip(&data[delay..data.len()])
-        .map(|(a,b)| a*b)
-        .sum()
+    let r : f64 = data[0..data.len() - delay]
+                .iter()
+                .zip(&data[delay..data.len()])
+                .map(|(a,b)| a*b)
+                .sum();
+    //r / data.len() as f64
+    r
 }
 
-fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> Option<Samples> {
-    let mut maxr = THRESH * autocorr(data, 0);
-    //println!("maxr {}", maxr);
+fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<Samples>, f64) {
+    let mut r0 = autocorr(data, 0);
+    let mut maxr = 0.0;
     let mut maxdelay = None;
     for delay in minscan.0 .. maxscan.0 {
         let r = autocorr(data, delay);
         if r > maxr {
             maxr = r;
-            maxdelay = Some(Samples(delay));
+            if maxr > THRESH * r0 {
+                maxdelay = Some(Samples(delay));
+            }
         }
     }
-    maxdelay
+    if r0 == 0.0 { r0 = 0.000001 };
+    (maxdelay, maxr / r0)
 }
 
 fn period_to_note(period: impl Into<Sec>) -> Cent {
@@ -80,20 +86,23 @@ impl Pitch {
             maxscan: note_to_period(Cent(MIN_NOTE)).into(),
             minscan: note_to_period(Cent(MAX_NOTE)).into(),
             note: None,
+            corr: 0.0,
         }
     }
 
-    pub fn add_sample(&mut self, samp: f64) -> Option<Cent> {
+    // return detected pitch and the normalized correlation
+    pub fn add_sample(&mut self, samp: f64) -> (Option<Cent>, f64) {
         self.data.push(samp);
         if self.data.len() == self.size {
-            //println!("scan {:?} to {:?}", self.minscan, self.maxscan);
-            let windat = window(&self.data, &self.window);
-            self.note = max_autocorr(&windat, self.minscan, self.maxscan).map(period_to_note);
+            //let windata = window(&self.data, &self.window);
+            let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
+            self.note = optnote.map(period_to_note);
+            self.corr = corr;
 
             // shift over the last "overlap" elements to start of vec
             self.data.drain(0 .. self.size - self.overlap);
         }
-        self.note
+        (self.note, self.corr)
     }
 }
 

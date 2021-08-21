@@ -10,4 +10,4 @@ device_query = "0.2.8"
 wav = "1.0.0"
 
 [workspace]
-members = ["filtviz", "phaserviz", "flangerviz", "fftviz", "phaseviz", "genviz", "player"]
+members = ["pitchviz", "filtviz", "phaserviz", "flangerviz", "fftviz", "phaseviz", "genviz", "player"]
