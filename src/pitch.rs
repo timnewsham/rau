@@ -1,5 +1,5 @@
 
-use std::f64::consts::PI;
+//use std::f64::consts::PI;
 use crate::units::{Samples, Hz, Cent, Sec};
 //use crate::module::*;
 
@@ -11,7 +11,7 @@ const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A44
 // Pitch detection by detecting lag that maximizes the autocorrelation
 pub struct Pitch {
     pub data: Vec<f64>, // XXX use dequeue?
-    pub window: Vec<f64>,
+    //pub window: Vec<f64>,
     size: usize,
     overlap: usize, // overlap < size
     minscan: Samples,
@@ -20,6 +20,7 @@ pub struct Pitch {
     pub corr: f64,
 }
 
+/*
 fn make_window(n: usize) -> Vec<f64> {
     // using a simple sine window. the shape shouldnt be that important...
     (1..n+1)
@@ -33,6 +34,7 @@ fn window(data: &Vec<f64>, window: &Vec<f64>) -> Vec<f64> {
         .map(|(a,b)| a*b)
         .collect()
 }
+*/
 
 fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     let r : f64 = data[0..data.len() - delay]
@@ -79,7 +81,7 @@ impl Pitch {
         //println!("size {} overlap {}", winsamples, overlapsamples);
         Self {
             data: Vec::new(),
-            window: make_window(winsamples),
+            //window: make_window(winsamples),
             size: winsamples,
             overlap: overlapsamples,
             // note: min becomes max and vice versa, because we're converting from freqs to periods

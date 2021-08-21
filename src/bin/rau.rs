@@ -211,7 +211,7 @@ fn test_pitch() {
     println!("storage: {:?}", p.data);
 
     // verify that the window function is sane
-    p.window.iter().copied().for_each(plot1);
+    //p.window.iter().copied().for_each(plot1);
 }
 
 fn show_pitch() {
