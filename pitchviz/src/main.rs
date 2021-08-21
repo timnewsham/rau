@@ -70,16 +70,18 @@ fn main() {
 
     println!("read file");
     let samples = read_wav(path, FSAMP);
+
     println!("compute pitches");
-    let mut p = Pitch::new(Sec(0.050), Sec(0.010));
+    //let mut p = Pitch::new(Sec(0.050), Sec(0.010));
+    let mut p = Pitch::new(Sec(0.030), Sec(0.002));
     let mut dat: Vec<(Option<Cent>, f64)> = Vec::new();
     for Sample{left, right: _} in samples {
         if let Some(x) = p.add_sample2(left) {
             dat.push(x);
         }
     }
-    println!("gui");
 
+    println!("gui");
     let app = App::new(dat);
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = false;
