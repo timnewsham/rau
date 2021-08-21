@@ -1,7 +1,7 @@
 
 use std::fs::File;
 use wav::{self, bit_depth::BitDepth};
-use crate::speaker::Sample;
+pub use crate::speaker::Sample;
 
 fn cvt_pairs<T: Copy, F: Fn(T) -> f64>(vs: &Vec<T>, cvt: F) -> Vec<Sample> {
     (0..vs.len())

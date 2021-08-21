@@ -79,7 +79,15 @@ pub struct Cent(pub f64);
 
 impl From<Cent> for Hz {
     fn from(x: Cent) -> Self {
+        // hz = 440 * 2^(cent / 1200)
         Hz(440.0 * (2.0_f64).powf(x.0 / 1200.0))
+    }
+}
+
+impl From<Hz> for Cent {
+    fn from(x: Hz) -> Self {
+        // cent = 1200 * log2 (hz/440)
+        Cent(1200.0 * (x.0 / 440.0).log2())
     }
 }
 
@@ -88,3 +96,4 @@ impl From<Cent> for RadPS {
         RadPS::from( Hz::from(x) )
     }
 }
+
