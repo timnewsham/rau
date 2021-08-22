@@ -12,6 +12,7 @@ const DOWNRATE: usize = 8;
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
 // XXX take FFT of autocorr to find true fundamental
+// XXX downsampling increases pitch error since pitch resolution is based on integral number of samples in its period.
 pub struct Pitch {
     pub down_sample: Resampler, // downsample by DOWNRATE 
     pub data: Vec<f64>, // downsampled data
