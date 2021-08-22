@@ -10,6 +10,7 @@ const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A44
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
 // XXX use a downsampler for perf. 2^4 * 440 = 7040hz. we can downsample by 6, 48k->8k
+// XXX take FFT of autocorr to find true fundamental
 pub struct Pitch {
     pub data: Vec<f64>, // XXX use dequeue?
     size: usize,
