@@ -7,28 +7,27 @@ use eframe::{egui, epi};
 use egui::{Color32, NumExt, remap};
 use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
 use rustfft::*;
-use rau::speaker::{Sample, MidSide, ResamplingSpeaker, SamplePlayer};
-use rau::wav::read_wav_at;
+use rau::speaker::{Sample, MidSide, player_at, DynSpeaker};
+use rau::wav::read_wav;
 
-const FSAMP: f64 = 44100.0;
-const MAXHZ: f64 = 0.5 * FSAMP;
 const FFTSIZE: usize = 1024;
 const MINDB: f64 = -60.0;
 
 struct App {
-    speaker: ResamplingSpeaker,
+    speaker: DynSpeaker,
     samples: Vec<Sample>,
     time: f64,
     fft: Arc<dyn Fft<f64>>,
     midhist: Vec<f64>,
     sidehist: Vec<f64>,
     alpha: f64,
+    fsamp: f64,
 }
 
 impl App {
     fn from_file(path: &str) -> Self {
-        let speaker = ResamplingSpeaker::new_441_to_480(1000);
-        let samples = read_wav_at(path, FSAMP);
+        let (fsamp, samples) = read_wav(path);
+        let speaker = player_at(fsamp, 1000);
         let mut planner = FftPlanner::new();
 
         App {
@@ -39,11 +38,12 @@ impl App {
             midhist: vec![0.0; FFTSIZE],
             sidehist: vec![0.0; FFTSIZE],
             alpha: 0.5,
+            fsamp: fsamp as f64,
         }
     }
 
     fn max_time(&self) -> f64 {
-        self.samples.len() as f64 / FSAMP
+        self.samples.len() as f64 / self.fsamp
     }
 }
 
@@ -63,17 +63,18 @@ fn mid_side(s: &Sample) -> Complex<f64> {
     Complex{ re: mid, im: side }
 }
 
-fn curve(speaker: &mut ResamplingSpeaker,
+fn curve(speaker: &mut DynSpeaker,
         fft: &Arc<dyn Fft<f64>>,
         midhist: &mut Vec<f64>,
         sidehist: &mut Vec<f64>,
         alpha: f64,
-        samps: &Vec<Sample>, from_t: f64, to_t: f64) -> (Line, Line)
+        samps: &Vec<Sample>, from_t: f64, to_t: f64,
+        fsamp: f64) -> (Line, Line)
 {
     // compute window extents for FFTSIZE samples
     // and deliver the audio
-    let mut from = (from_t * FSAMP) as usize;
-    let mut to = cmp::min((to_t * FSAMP) as usize, samps.len());
+    let mut from = (from_t * fsamp) as usize;
+    let mut to = cmp::min((to_t * fsamp) as usize, samps.len());
     for i in from..to {
         speaker.play(samps[i]);
     }
@@ -105,8 +106,9 @@ fn curve(speaker: &mut ResamplingSpeaker,
         sidehist[n] = side_db * alpha + sidehist[n] * (1.0 - alpha);
     }
 
+    let maxhz = 0.5 * fsamp;
     let dat1 = (3..FFTSIZE/2).map(|i| {
-            let freq = remap(i as f64, 0.0..=((FFTSIZE/2) as f64), 0.0..=MAXHZ);
+            let freq = remap(i as f64, 0.0..=((FFTSIZE/2) as f64), 0.0..=maxhz);
             Value::new(freq.log(10.0), midhist[i])
         });
     let l1 = Line::new(Values::from_values_iter(dat1))
@@ -114,7 +116,7 @@ fn curve(speaker: &mut ResamplingSpeaker,
         .name("MID FFT");
 
     let dat2 = (3..FFTSIZE/2).map(|i| {
-            let freq = remap(i as f64, 0.0..=((FFTSIZE/2) as f64), 0.0..=MAXHZ);
+            let freq = remap(i as f64, 0.0..=((FFTSIZE/2) as f64), 0.0..=maxhz);
             Value::new(freq.log(10.0), sidehist[i])
         });
     let l2 = Line::new(Values::from_values_iter(dat2))
@@ -128,7 +130,8 @@ impl epi::App for App {
     fn name(&self) -> &str { "Phase Fun" }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let maxt = self.max_time();
-        let Self { speaker, samples, time, fft, midhist, sidehist, alpha, .. } = self;
+        let Self { speaker, samples, time, fft, midhist, sidehist, alpha, fsamp, .. } = self;
+        let maxhz = 0.5 * *fsamp;
         egui::TopBottomPanel::top("Filter Fun").show(ctx, |ui| {
             ui.ctx().request_repaint(); // always repaint, it advances our clock
 
@@ -139,12 +142,12 @@ impl epi::App for App {
             } else {
                 *time = 0.0;
             }
-            //ui.heading(format!("Controls - time {:.01}   samples {:.0}", starttime, (endtime-starttime)*FSAMP));
+            //ui.heading(format!("Controls - time {:.01}   samples {:.0}", starttime, (endtime-starttime)*fsamp));
             ui.heading("Controls");
             ui.add(egui::Slider::new(alpha, 0.01..=0.99).text("Alpha"));
             ui.add(egui::Slider::new(time, 0.0..=maxt).text("Time"));
 
-            let (curve1, curve2) = curve(&mut *speaker, &*fft, &mut *midhist, &mut *sidehist, *alpha, samples, starttime, endtime);
+            let (curve1, curve2) = curve(&mut *speaker, &*fft, &mut *midhist, &mut *sidehist, *alpha, samples, starttime, endtime, *fsamp);
             let plot = Plot::new("phase plot")
                 .line(curve1)
                 .line(curve2)
@@ -152,7 +155,7 @@ impl epi::App for App {
                 .include_y(15.0)
                 .include_y(MINDB)
                 //.include_x(-10.0)
-                .include_x(MAXHZ.log(10.0))
+                .include_x(maxhz.log(10.0))
                 .legend(Legend::default())
                 ;
             ui.add(plot);
