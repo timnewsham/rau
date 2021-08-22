@@ -9,13 +9,13 @@ use crate::resampler::Resampler;
 use crate::module::*;
 
 // belongs elsewhere
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Sample {
     pub left: f64,
     pub right: f64,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MidSide {
     pub mid: f64,
     pub side: f64,
