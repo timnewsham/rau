@@ -5,7 +5,7 @@ use cpal::{BufferSize, StreamConfig, SampleRate};
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use crate::units::{Samples, SAMPLE_RATE};
-use crate::resampler::Resampler;
+use crate::resampler::ResamplerStereo;
 use crate::module::*;
 
 // belongs elsewhere
@@ -132,7 +132,7 @@ pub fn init(l: &mut Loader) {
 }
 
 pub struct ResamplingSpeaker {
-    resampler: Resampler,
+    resampler: ResamplerStereo,
     speaker: Speaker,
 }
 
@@ -140,7 +140,7 @@ impl ResamplingSpeaker {
     // Consumes 44.1KHz audio and plays on 48KHz audio speaker
     pub fn new_441_to_480(qsize: usize) -> Self {
         Self {
-            resampler: Resampler::new_441_to_480(),
+            resampler: ResamplerStereo::new_441_to_480(),
             speaker: Speaker::new_full(48000.0, qsize),
         }
     }

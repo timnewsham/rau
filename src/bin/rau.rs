@@ -200,6 +200,7 @@ fn test_loader() -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn test_pitch() {
     // verify that the storage is shifting properly
     let mut p = rau::pitch::Pitch::new(Samples(10), Samples(3));
@@ -214,6 +215,7 @@ fn test_pitch() {
     //p.window.iter().copied().for_each(plot1);
 }
 
+#[allow(dead_code)]
 fn show_pitch() {
     let mut p = rau::pitch::Pitch::new(Sec(0.050), Sec(0.010));
     let samps = read_wav("pitch.wav", 48000.0);

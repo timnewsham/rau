@@ -1,6 +1,6 @@
 
 //use std::f64::consts::PI;
-use crate::resampler::{Resampler, Sample};
+use crate::resampler::Resampler;
 use crate::units::{Samples, Hz, Cent, Sec};
 //use crate::module::*;
 
@@ -89,7 +89,7 @@ impl Pitch {
 
     pub fn add_sample(&mut self, samp: f64) -> bool {
         // XXX we're using a stereo downsampler for mono data, this is wasteful.
-        if let Some(Sample{ left: downsamp, right: _}) = self.down_sample.resample_down(Sample{left: samp, right: 0.0}) {
+        if let Some(downsamp) = self.down_sample.resample_down(samp) {
             if self.data.len() == self.size {
                 // shift over the last "overlap" elements to start of vec
                 self.data.drain(0 .. self.size - self.overlap);
