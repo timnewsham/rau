@@ -5,7 +5,7 @@ use eframe::{egui, epi};
 use egui::Color32;
 use egui::widgets::plot::{Line, Points, Values, Value, Plot, Legend};
 //use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
-use rau::wav::{read_wav, Sample};
+use rau::wav::{read_wav_at, Sample};
 use rau::pitch::{Pitch, period_to_note};
 use rau::units::{Cent, Sec, Samples};
 
@@ -128,7 +128,7 @@ fn main() {
     let path = if args.len() > 1 { &args[1] } else { "pitch.wav" };
 
     println!("read file");
-    let samples = read_wav(path, FSAMP);
+    let samples = read_wav_at(path, FSAMP);
 
     println!("compute pitches and autocorrs");
     //let mut p = Pitch::new(Sec(0.050), Sec(0.010));

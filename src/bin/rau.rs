@@ -10,7 +10,7 @@ use rau::speaker::Speaker;
 use rau::util::Mult;
 use rau::loader;
 use rau::module::{Rack, Module, modref_new};
-use rau::wav::{Sample, read_wav};
+use rau::wav::{Sample, read_wav_at};
 
 #[allow(dead_code)]
 fn visual_check_simple() -> Result<(), String> {
@@ -218,7 +218,7 @@ fn test_pitch() {
 #[allow(dead_code)]
 fn show_pitch() {
     let mut p = rau::pitch::Pitch::new(Sec(0.050), Sec(0.010));
-    let samps = read_wav("pitch.wav", 48000.0);
+    let samps = read_wav_at("pitch.wav", 48000.0);
     let mut last_note = None;
     for Sample{left, right: _} in samps {
         let note = p.sample_to_note(left);

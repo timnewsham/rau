@@ -7,8 +7,8 @@ use eframe::{egui, epi};
 use egui::{Color32, NumExt, remap};
 use egui::widgets::plot::{Line, Values, Value, Plot, Legend};
 use rustfft::*;
-use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
-use rau::wav::read_wav;
+use rau::speaker::{Sample, MidSide, ResamplingSpeaker, SamplePlayer};
+use rau::wav::read_wav_at;
 
 const FSAMP: f64 = 44100.0;
 const MAXHZ: f64 = 0.5 * FSAMP;
@@ -28,7 +28,7 @@ struct App {
 impl App {
     fn from_file(path: &str) -> Self {
         let speaker = ResamplingSpeaker::new_441_to_480(1000);
-        let samples = read_wav(path, FSAMP);
+        let samples = read_wav_at(path, FSAMP);
         let mut planner = FftPlanner::new();
 
         App {

@@ -39,6 +39,10 @@ impl From<MidSide> for Sample {
     }
 }
 
+pub trait SamplePlayer {
+    fn play(&mut self, sample: Sample);
+}
+
 pub struct Speaker {
     tx: mpsc::SyncSender<Sample>,
 
@@ -89,10 +93,6 @@ impl Speaker {
         Speaker{ tx, rvalue: 0.0, lvalue: 0.0, stream }
     }
 
-    pub fn play(&mut self, sample: Sample) {
-        self.tx.send(sample).expect("cant send audio data");
-    }
-
     pub fn record(&mut self, m: &mut impl Module, outp: &str, time: impl Into<Samples>) -> Result<(), String> {
         let out_idx = m.output_idx("module", outp)?;
         let Samples(samples) = time.into();
@@ -102,6 +102,12 @@ impl Speaker {
             self.play(Sample{ left: v, right: v, });
         }
         Ok(())
+    }
+}
+
+impl SamplePlayer for Speaker {
+    fn play(&mut self, sample: Sample) {
+        self.tx.send(sample).expect("cant send audio data");
     }
 }
 
@@ -144,9 +150,23 @@ impl ResamplingSpeaker {
             speaker: Speaker::new_full(48000.0, qsize),
         }
     }
+}
 
-    pub fn play(&mut self, sample: Sample) {
+impl SamplePlayer for ResamplingSpeaker {
+    fn play(&mut self, sample: Sample) {
         let Self{ resampler, speaker } = self;
         resampler.resample(sample, |s| speaker.play(s));
     }
 }
+
+pub type DynSpeaker = Box<dyn SamplePlayer>;
+
+pub fn player_at(rate: u32, qsize: usize) -> DynSpeaker {
+    assert!(SAMPLE_RATE == 48000.0);
+    match rate {
+        44100 => Box::new(ResamplingSpeaker::new_441_to_480(qsize)),
+        48000 => Box::new(Speaker::new_full(SAMPLE_RATE, qsize)),
+        _ => panic!("unsupported sampling rate"),
+    }
+}
+

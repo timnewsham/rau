@@ -20,9 +20,16 @@ fn convert_samples(wavsamps: &BitDepth) -> Vec<Sample> {
     }
 }
 
-pub fn read_wav(path: &str, rate: f64) -> Vec<Sample> {
+pub fn read_wav_at(path: &str, rate: f64) -> Vec<Sample> {
     let mut inp = File::open(path).expect("couldnt open file");
     let (hdr, dat) = wav::read(&mut inp).expect("couldn't read samples");
     assert!(hdr.channel_count == 2 && rate as u32 == hdr.sampling_rate);
     convert_samples(&dat)
+}
+
+pub fn read_wav(path: &str) -> (u32, Vec<Sample>) {
+    let mut inp = File::open(path).expect("couldnt open file");
+    let (hdr, dat) = wav::read(&mut inp).expect("couldn't read samples");
+    assert!(hdr.channel_count == 2);
+    (hdr.sampling_rate, convert_samples(&dat))
 }

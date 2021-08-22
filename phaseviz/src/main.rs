@@ -4,37 +4,37 @@ use std::cmp;
 use eframe::{egui, epi};
 use egui::{Color32, NumExt};
 use egui::widgets::plot::{Line, Values, Value, Plot};
-use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
+use rau::speaker::{Sample, MidSide, player_at, DynSpeaker};
 use rau::wav::read_wav;
 
-const FSAMP: f64 = 44100.0;
-
 struct App {
-    speaker: ResamplingSpeaker,
+    speaker: DynSpeaker,
     samples: Vec<Sample>,
     time: f64,
+    fsamp: f64,
 }
 
 impl App {
     fn from_file(path: &str) -> Self {
-        let speaker = ResamplingSpeaker::new_441_to_480(1000);
-        let samples = read_wav(path, FSAMP);
+        let (fsamp, samples) = read_wav(path);
+        let speaker = player_at(fsamp, 1000);
 
         App {
             speaker: speaker,
             samples: samples,
+            fsamp: fsamp as f64,
             time: 0.0,
         }
     }
 
     fn max_time(&self) -> f64 {
-        self.samples.len() as f64 / FSAMP
+        self.samples.len() as f64 / self.fsamp
     }
 }
 
-fn phase_curve(speaker: &mut ResamplingSpeaker, samps: &Vec<Sample>, from_t: f64, to_t: f64) -> Line {
-    let from = (from_t * FSAMP) as usize;
-    let to = cmp::min((to_t * FSAMP) as usize, samps.len());
+fn phase_curve(speaker: &mut DynSpeaker, samps: &Vec<Sample>, from_t: f64, to_t: f64, fsamp: f64) -> Line {
+    let from = (from_t * fsamp) as usize;
+    let to = cmp::min((to_t * fsamp) as usize, samps.len());
     let dat = (from..to).map(|i| {
             speaker.play(samps[i]);
             let MidSide{ mid, side } = samps[i].into();
@@ -51,7 +51,7 @@ impl epi::App for App {
     fn name(&self) -> &str { "Phase Fun" }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let maxt = self.max_time();
-        let Self { speaker, samples, time } = self;
+        let Self { speaker, samples, time, fsamp } = self;
         egui::TopBottomPanel::top("Filter Fun").show(ctx, |ui| {
             ui.ctx().request_repaint(); // always repaint, it advances our clock
 
@@ -65,7 +65,7 @@ impl epi::App for App {
             ui.heading("Controls");
             ui.add(egui::Slider::new(time, 0.0..=maxt).text("Time"));
 
-            let curve = phase_curve(speaker, samples, starttime, endtime);
+            let curve = phase_curve(speaker, samples, starttime, endtime, *fsamp);
             let plot = Plot::new("phase plot")
                 .line(curve)
                 .view_aspect(1.5)
