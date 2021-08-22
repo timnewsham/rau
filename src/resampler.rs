@@ -1,6 +1,6 @@
 
 use std::f64::consts::PI;
-use crate::speaker::Sample;
+pub use crate::speaker::Sample;
 
 pub struct Resampler {
     n: usize,
@@ -21,6 +21,11 @@ impl Resampler {
     // resample 44100->48000 (160/147 ratio), LP 70dB down with cutoff 80% of 22050 (17640Hz), 32-order FIR
     pub fn new_441_to_480() -> Self {
         Resampler::new(160, 147, 70.0, 0.8, 32)
+    }
+
+    // downsample by 1/down with 70dB down, cutoff at 80% of new sampling rate, 32-order FIR.
+    pub fn new_down(down: usize) -> Self {
+        Resampler::new(1, down, 70.0, 0.8, 32)
     }
 
     pub fn new(n: usize, m: usize, atten: f64, cutoff: f64, order: usize) -> Self {
@@ -61,6 +66,14 @@ impl Resampler {
             phasefilt[k % n].push(*coeff);
         }
         phasefilt
+    }
+
+    // resample down, generating at most a single sample for each input
+    pub fn resample_down(&mut self, sample: Sample) -> Option<Sample> {
+        assert!(self.n <= self.m);
+        let mut out = None;
+        self.resample(sample, |s| out = Some(s));
+        out
     }
 
     pub fn resample<F: FnMut(Sample)>(&mut self, sample: Sample, mut cb: F) {

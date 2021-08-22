@@ -1,5 +1,6 @@
 
 //use std::f64::consts::PI;
+use crate::resampler::{Resampler, Sample};
 use crate::units::{Samples, Hz, Cent, Sec};
 //use crate::module::*;
 
@@ -7,16 +8,17 @@ const THRESH: f64 = 0.75; // threshold for detection as a factor of r0
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
+const DOWNRATE: usize = 8;
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
-// XXX use a downsampler for perf. 2^4 * 440 = 7040hz. we can downsample by 6, 48k->8k
 // XXX take FFT of autocorr to find true fundamental
 pub struct Pitch {
-    pub data: Vec<f64>, // XXX use dequeue?
-    size: usize,
-    overlap: usize, // overlap < size
-    pub minscan: Samples,
-    pub maxscan: Samples,
+    pub down_sample: Resampler, // downsample by DOWNRATE 
+    pub data: Vec<f64>, // downsampled data
+    size: usize, // how much data to collect into a batch
+    overlap: usize, // how much data to keep between batches, overlap < size
+    pub minscan: SamplesDown,
+    pub maxscan: SamplesDown,
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub corr: f64,
 }
@@ -30,7 +32,7 @@ pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     r / data.len() as f64
 }
 
-fn autocorrs(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> Vec<f64> {
+fn autocorrs(data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) -> Vec<f64> {
     let mut r0 = autocorr(data, 0);
     if r0 == 0.0 { r0 = 0.000001 };
 
@@ -39,7 +41,7 @@ fn autocorrs(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> Vec<f64> {
         .collect()
 }
 
-fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<Samples>, f64) {
+fn max_autocorr(data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) -> (Option<SamplesDown>, f64) {
     let mut r0 = autocorr(data, 0);
     if r0 == 0.0 { r0 = 0.000001 };
 
@@ -50,7 +52,7 @@ fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<
         if r > maxr {
             maxr = r;
             if maxr > THRESH * r0 {
-                maxdelay = Some(Samples(delay));
+                maxdelay = Some(SamplesDown(delay));
             }
         }
     }
@@ -68,11 +70,12 @@ fn note_to_period(note: Cent) -> Sec {
 }
 
 impl Pitch {
-    pub fn new(winsz: impl Into<Samples>, overlap: impl Into<Samples>) -> Self {
-        let Samples(winsamples) = winsz.into();
-        let Samples(overlapsamples) = overlap.into();
+    pub fn new(winsz: impl Into<SamplesDown>, overlap: impl Into<SamplesDown>) -> Self {
+        let SamplesDown(winsamples) = winsz.into();
+        let SamplesDown(overlapsamples) = overlap.into();
         assert!(overlapsamples < winsamples);
         Self {
+            down_sample: Resampler::new_down(DOWNRATE),
             data: Vec::new(),
             size: winsamples,
             overlap: overlapsamples,
@@ -85,12 +88,15 @@ impl Pitch {
     }
 
     pub fn add_sample(&mut self, samp: f64) -> bool {
-        if self.data.len() == self.size {
-            // shift over the last "overlap" elements to start of vec
-            self.data.drain(0 .. self.size - self.overlap);
-        }
+        // XXX we're using a stereo downsampler for mono data, this is wasteful.
+        if let Some(Sample{ left: downsamp, right: _}) = self.down_sample.resample_down(Sample{left: samp, right: 0.0}) {
+            if self.data.len() == self.size {
+                // shift over the last "overlap" elements to start of vec
+                self.data.drain(0 .. self.size - self.overlap);
+            }
 
-        self.data.push(samp);
+            self.data.push(downsamp);
+        }
         return self.data.len() == self.size;
     }
 
@@ -103,6 +109,9 @@ impl Pitch {
     pub fn proc_sample(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
         if self.add_sample(samp) {
             let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
+
+            // convert SamplesDown into Samples and then into a note
+            // XXX generic here?
             self.note = optnote.map(period_to_note);
             self.corr = corr;
             Some((self.note, self.corr))
@@ -118,3 +127,33 @@ impl Pitch {
     }
 }
 
+// Samples at slower rate (ie. 1/8th) of the `Samples` type
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct SamplesDown(pub usize);
+
+// XXX cant we do these conversions generically?
+impl From<Samples> for SamplesDown {
+    fn from(s: Samples) -> Self {
+        Self(s.0 / DOWNRATE)
+    }
+}
+
+impl From<SamplesDown> for Samples {
+    fn from(s8: SamplesDown) -> Self {
+        Self(s8.0 * DOWNRATE)
+    }
+}
+
+impl From<Sec> for SamplesDown {
+    fn from(x: Sec) -> Self {
+        let s: Samples = x.into();
+        s.into()
+    }
+}
+
+impl From<SamplesDown> for Sec {
+    fn from(x: SamplesDown) -> Self {
+        let s: Samples = x.into();
+        s.into()
+    }
+}
