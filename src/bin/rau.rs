@@ -204,10 +204,10 @@ fn test_pitch() {
     // verify that the storage is shifting properly
     let mut p = rau::pitch::Pitch::new(Samples(10), Samples(3));
     for n in 0..9 {
-        p.add_sample(n as f64);
+        p.proc_sample(n as f64);
     }
     println!("storage: {:?}", p.data);
-    p.add_sample(9.0);
+    p.proc_sample(9.0);
     println!("storage: {:?}", p.data);
 
     // verify that the window function is sane
@@ -219,7 +219,7 @@ fn show_pitch() {
     let samps = read_wav("pitch.wav", 48000.0);
     let mut last_note = None;
     for Sample{left, right: _} in samps {
-        let note = p.add_sample(left);
+        let note = p.sample_to_note(left);
         if note != last_note {
             println!("{:?}", note);
         }

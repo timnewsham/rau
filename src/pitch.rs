@@ -14,13 +14,13 @@ pub struct Pitch {
     pub data: Vec<f64>, // XXX use dequeue?
     size: usize,
     overlap: usize, // overlap < size
-    minscan: Samples,
-    maxscan: Samples,
+    pub minscan: Samples,
+    pub maxscan: Samples,
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub corr: f64,
 }
 
-fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
+pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     let r : f64 = data[0..data.len() - delay]
                 .iter()
                 .zip(&data[delay..data.len()])
@@ -29,8 +29,19 @@ fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     r / data.len() as f64
 }
 
+fn autocorrs(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> Vec<f64> {
+    let mut r0 = autocorr(data, 0);
+    if r0 == 0.0 { r0 = 0.000001 };
+
+    (minscan.0 .. maxscan.0)
+        .map(|delay| autocorr(data, delay) / r0)
+        .collect()
+}
+
 fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<Samples>, f64) {
     let mut r0 = autocorr(data, 0);
+    if r0 == 0.0 { r0 = 0.000001 };
+
     let mut maxr = 0.0;
     let mut maxdelay = None;
     for delay in minscan.0 .. maxscan.0 {
@@ -42,11 +53,10 @@ fn max_autocorr(data: &Vec<f64>, minscan: Samples, maxscan: Samples) -> (Option<
             }
         }
     }
-    if r0 == 0.0 { r0 = 0.000001 };
     (maxdelay, maxr / r0)
 }
 
-fn period_to_note(period: impl Into<Sec>) -> Cent {
+pub fn period_to_note(period: impl Into<Sec>) -> Cent {
     let Sec(period_secs) = period.into();
     Hz(1.0 / period_secs).into()
 }
@@ -73,16 +83,27 @@ impl Pitch {
         }
     }
 
-    // return detected pitch and the normalized correlation, only when there is a newly computed value
-    pub fn add_sample2(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
-        self.data.push(samp);
+    pub fn add_sample(&mut self, samp: f64) -> bool {
         if self.data.len() == self.size {
+            // shift over the last "overlap" elements to start of vec
+            self.data.drain(0 .. self.size - self.overlap);
+        }
+
+        self.data.push(samp);
+        return self.data.len() == self.size;
+    }
+
+    pub fn autocorrs(&self) -> Vec<f64> {
+        assert!(self.data.len() == self.size);
+        autocorrs(&self.data, self.minscan, self.maxscan)
+    }
+
+    // return detected pitch and the normalized correlation, only when there is a newly computed value
+    pub fn proc_sample(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
+        if self.add_sample(samp) {
             let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
             self.note = optnote.map(period_to_note);
             self.corr = corr;
-
-            // shift over the last "overlap" elements to start of vec
-            self.data.drain(0 .. self.size - self.overlap);
             Some((self.note, self.corr))
         } else {
             None
@@ -90,8 +111,8 @@ impl Pitch {
     }
 
     // return the detected pitch, one value per input sample
-    pub fn add_sample(&mut self, samp: f64) -> Option<Cent> {
-        self.add_sample2(samp);
+    pub fn sample_to_note(&mut self, samp: f64) -> Option<Cent> {
+        self.proc_sample(samp);
         self.note
     }
 }
