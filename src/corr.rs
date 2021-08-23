@@ -89,7 +89,7 @@ impl SDF {
         }
     }
 
-    pub fn process(&mut self, x: &Vec<f64>) {
+    pub fn process(&mut self, x: &Vec<f64>, norm: bool) {
         assert!(x.len() == self.n);
         // ref: https://www.cs.otago.ac.nz/research/publications/oucs-2008-03.pdf Sec 3.3.4 (pg 51)
         // let m[d] = SUM (x[j]^2 + x[j+d]^2)
@@ -113,7 +113,18 @@ impl SDF {
         let mut m = 2.0 * r0;
         for delay in 1..self.k {
             m -= x[delay - 1].powi(2) + x[self.n - delay].powi(2);
-            self.buf[delay] = m - 2.0 * r0 * self.corr.buf[delay].re;
+            let sdf = m - 2.0 * r0 * self.corr.buf[delay].re;
+            if norm {
+                // normalized SDF
+                if m != 0.0 {
+                    self.buf[delay] = 1.0 - sdf / m;
+                } else {
+                    self.buf[delay] = 0.0;
+                }
+            } else {
+                // traditional SDF
+                self.buf[delay] = sdf;
+            }
         }
     }
 }
