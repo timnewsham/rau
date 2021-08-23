@@ -47,3 +47,73 @@ impl AutoCorr {
     }
 }
 
+// Textbook implementation of square-difference function
+pub struct NaiveSDF {
+    pub n: usize, // input size
+    pub k: usize, // output size
+    pub buf: Vec<f64>,
+}
+
+impl NaiveSDF {
+    pub fn new(n: usize, k: usize) -> Self {
+        Self { n, k, buf: vec![0.0; k], }
+    }
+
+    pub fn process(&mut self, x: &Vec<f64>) {
+        assert!(x.len() == self.n);
+        for delay in 0..self.k {
+            let mut sum = 0.0;
+            for j in 0..self.n - delay {
+                sum += (x[j] - x[j+delay]).powi(2);
+            }
+            self.buf[delay] = sum;
+        }
+    }
+}
+
+// Efficient implementation of square-difference function using efficient AutoCorr
+pub struct SDF {
+    pub n: usize, // input size
+    pub k: usize, // output size
+    pub buf: Vec<f64>,
+
+    corr: AutoCorr,
+}
+
+impl SDF {
+    pub fn new(n: usize, k: usize) -> Self {
+        Self { 
+            n, k,
+            buf: vec![0.0; k], 
+            corr: AutoCorr::new(n, k),
+        }
+    }
+
+    pub fn process(&mut self, x: &Vec<f64>) {
+        assert!(x.len() == self.n);
+        // ref: https://www.cs.otago.ac.nz/research/publications/oucs-2008-03.pdf Sec 3.3.4 (pg 51)
+        // let m[d] = SUM (x[j]^2 + x[j+d]^2)
+        // SDF[d] = SUM (x[j] - x[j+d])^2
+        //        = SUM (x[j]^2 + x[j+d]^2) - 2 * r[d]       ; by expanding (a-b)^2 = a^2 + b^2 - 2 ab
+        //        = m[d] - 2 * r[d]
+        // note: m[d] can be computed incrementally from m[d-1], starting with m[0] = 2*r[0]
+        //   with: m[d] = m[d-1] - x[d-1]^2 - x[N - d]^2
+        // note: our corr[d] is normalized by r0, so we have to de-normalize.
+        // XXX alternately we could normalize m's by r0.
+
+        // compute r's
+        for n in 0 .. x.len() { self.corr.buf[n] = x[n].into(); }
+        self.corr.process();
+
+        // re-compute r0 because we lost its true value when normalizing
+        let r0: f64 = x.iter().copied().map(|v| v.powi(2)).sum();
+
+        // XXX could compute in-place into self.corr's buffer for space efficiency.
+        self.buf[0] = 0.0;
+        let mut m = 2.0 * r0;
+        for delay in 1..self.k {
+            m -= x[delay - 1].powi(2) + x[self.n - delay].powi(2);
+            self.buf[delay] = m - 2.0 * r0 * self.corr.buf[delay].re;
+        }
+    }
+}
