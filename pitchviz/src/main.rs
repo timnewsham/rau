@@ -6,7 +6,7 @@ use egui::widgets::plot::{Line, Points, Values, Value, Plot, Legend};
 //use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
 use rau::wav::{read_wav_at, Sample};
 use rau::pitch::{Pitch, period_to_note};
-use rau::units::{Cent, Sec, Samples};
+use rau::units::{Cent, Sec, Samples, MidiNote};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum View { Pitch, NSDFDelay, NSDFPitch }
@@ -51,9 +51,11 @@ fn nsdf_curve(nsdf: &Vec<f64>, show_delay: bool) -> Line {
 fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, Points)
 {
     let dat1 = pitches.iter().enumerate().filter(|(_,p)| p.0.is_some()).map(|(n,p)| {
-            let Cent(cent) = p.0.unwrap();
+            // display in Cents or MidiNotes?
+            let Cent(cents) = p.0.unwrap(); let note = cents / 100.0;
+            //let MidiNote(note) = p.0.unwrap().into();
             let Sec(sec) = Samples(n).into();
-            Value::new(sec, cent)
+            Value::new(sec, note)
         });
     let p1 = Points::new(Values::from_values_iter(dat1))
         .color(Color32::from_rgb(100, 200, 100))
@@ -61,7 +63,7 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, 
 
     let dat2 = pitches.iter().enumerate().map(|(n,p)| {
             let Sec(sec) = Samples(n).into();
-            Value::new(sec, 1000.0 * p.1)
+            Value::new(sec, 100.0 * p.1)
         });
     let l2 = Line::new(Values::from_values_iter(dat2))
         .color(Color32::from_rgb(200, 100, 100))

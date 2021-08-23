@@ -73,6 +73,7 @@ impl From<Hz> for RadPS {
  * Cents represent note values in cents above A 440.
  * XXX maybe I should just have "semitones above 440" instead of cents.
  * since its a float anyway...
+ * XXX or maybe use midi notes (semitones, with middle C being 60)
  */
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
 pub struct Cent(pub f64);
@@ -97,3 +98,20 @@ impl From<Cent> for RadPS {
     }
 }
 
+/*
+ * Notes in semitones with middle C being 60.0 and A440 = 69.0
+ */
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
+pub struct MidiNote(pub f64);
+
+impl From<Cent> for MidiNote {
+    fn from(x: Cent) -> Self {
+        MidiNote(69.0 + x.0 / 100.0)
+    }
+}
+
+impl From<MidiNote> for Cent {
+    fn from(x: MidiNote) -> Self {
+        Cent((x.0 - 69.0) * 100.0)
+    }
+}
