@@ -18,8 +18,8 @@ const THRESH2: f64 = 12.0; // threshold of autocorr fft peak power, in dB
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
-const DOWNRATE: usize = 8;
-//const DOWNRATE: usize = 4;
+//const DOWNRATE: usize = 8;
+const DOWNRATE: usize = 1;
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
 // XXX take FFT of autocorr to find true fundamental
@@ -33,6 +33,7 @@ pub struct Pitch {
     pub minscan: SamplesDown,
     pub maxscan: SamplesDown,
     fft: Arc<dyn Fft<f64>>,
+    fft_for_fast_autocorr: Arc<dyn Fft<f64>>,
 
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub power: f64, // power of the fft of the autocorr for the note
@@ -50,13 +51,39 @@ pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     r / (data.len()-delay) as f64
 }
 
-// compute autocorrelation of data into dst
+// compute autocorrelation of data into dst with straightforward method (slow)
 fn autocorrs(dst: &mut Vec<f64>, data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) {
     let mut r0 = autocorr(data, 0);
     if r0 == 0.0 { r0 = 0.000001 };
 
     for delay in minscan.0 .. maxscan.0 {
         dst[delay] = autocorr(data, delay) / r0;
+    }
+}
+
+// faster autocorr: take data, zero pad by how many autocorr outputs we care about (k),
+// take fft, then multiply each element by its conjugate, then take ifft, and the
+// first k elements will have re component with autocorrs (with some small error).
+fn fast_autocorrs(dst: &mut Vec<f64>, data: &Vec<f64>, maxscan: SamplesDown, fft: &Arc<dyn Fft<f64>>) {
+    let k = maxscan.0;
+    let sz = data.len() + k;
+    assert!(dst.len() == k);
+
+    // make padded buffer
+    let mut fftbuf: Vec<Complex<f64>> = vec![Complex{re: 0.0, im: 0.0}; sz];
+    for n in 0..data.len() {
+        fftbuf[n] = Complex{ re: data[n], im: 0.0 };
+    }
+
+    // approximate autocorr with fft
+    fft.process(&mut fftbuf); // forward fft
+    fftbuf.iter_mut().for_each(|v| *v = *v * v.conj());
+    fft.process(&mut fftbuf); // inverse fft, modulo scaling, which we normalize away anyway
+
+    // normalize results and copy to output
+    let inv_r0 = if fftbuf[0].re != 0.0 { 1.0 / fftbuf[0].re } else { 1.0 };
+    for n in 0..k {
+        dst[n] = fftbuf[n].re * inv_r0;
     }
 }
 
@@ -99,6 +126,7 @@ impl Pitch {
             size: winsamples,
             overlap: overlapsamples,
             fft: planner.plan_fft_forward(winsamples),
+            fft_for_fast_autocorr: planner.plan_fft_forward(winsamples + maxscan.0),
 
             // note: min becomes max and vice versa, because we're converting from freqs to periods
             maxscan: maxscan,
@@ -135,7 +163,8 @@ impl Pitch {
 
     fn detect(&mut self) {
         assert!(self.data.len() == self.size);
-        autocorrs(&mut self.corrdata, &self.data, self.minscan, self.maxscan);
+        //autocorrs(&mut self.corrdata, &self.data, self.minscan, self.maxscan);
+        fast_autocorrs(&mut self.corrdata, &self.data, self.maxscan, &self.fft_for_fast_autocorr);
         self.pack_fft_data();
         self.fft.process(&mut self.fftdata);
         let (fftidx,pow) = max_fft(&self.fftdata);
