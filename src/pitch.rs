@@ -227,8 +227,10 @@ impl PitchCorrect {
         }
 
         // mix in the previous overlap with a linear fade
-        for n in 0 .. self.overlap.len() {
-            let alpha = n as f64 / self.overlap.len() as f64;
+        let m = self.overlap.len();
+        for n in 0 .. m {
+            let alpha = n as f64 / m as f64;
+            // fade out self.overlap[] and fade in data[]
             data[n] = (1.0 - alpha) * self.overlap[n] + alpha * data[n];
         }
 
