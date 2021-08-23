@@ -20,15 +20,14 @@ struct App {
     pitches: Vec<(Option<Cent>, f64, f64)>,
     corrs: Vec<Vec<f64>>,
     ffts: Vec<Vec<Complex<f64>>>,
-    mindelay: usize,
     view: View,
     time: usize,
 }
 
 impl App {
-    fn new(pitches: Vec<(Option<Cent>, f64, f64)>, corrs: Vec<Vec<f64>>, ffts: Vec<Vec<Complex<f64>>>, mindelay: usize) -> Self {
+    fn new(pitches: Vec<(Option<Cent>, f64, f64)>, corrs: Vec<Vec<f64>>, ffts: Vec<Vec<Complex<f64>>>) -> Self {
         App {
-            pitches, corrs, ffts, mindelay,
+            pitches, corrs, ffts,
             view: View::Pitch,
             time: 0,
         }
@@ -40,9 +39,9 @@ fn to_db(pow: f64) -> f64 {
     if db.is_nan() || db < MINDB { MINDB } else { db }
 }
 
-fn corr_curve(corr: &Vec<f64>, mindelay: usize, show_delay: bool) -> Line {
+fn corr_curve(corr: &Vec<f64>, show_delay: bool) -> Line {
     let dat = corr.iter().enumerate().filter(|(n,_)| *n > 0).map(|(n,r)| {
-            let samps = Samples(n + mindelay);
+            let samps = Samples(n);
             let x = if show_delay {
                     let Sec(sec) = samps.into();
                     sec
@@ -98,20 +97,20 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64, f64)>, time: f64) -> (Points, L
         .name("Pow");
 
     let Sec(now) = Sec(time).into();
-    let datN = vec![Value::new(now, 0.0)];
-    let pN = Points::new(Values::from_values(datN))
+    let dat_n = vec![Value::new(now, 0.0)];
+    let p_n = Points::new(Values::from_values(dat_n))
         .radius(5.0)
         .color(Color32::from_rgb(100, 100, 200))
         .name("Time");
 
-    (p1, l2, l3, pN)
+    (p1, l2, l3, p_n)
 }
 
 
 impl epi::App for App {
     fn name(&self) -> &str { "Phase Fun" }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-        let Self { pitches, corrs, ffts, mindelay, view, time } = self;
+        let Self { pitches, corrs, ffts, view, time } = self;
         let Sec(now) = Samples(*time).into();
         egui::TopBottomPanel::top("Filter Fun").show(ctx, |ui| {
             ui.heading("Controls");
@@ -138,7 +137,7 @@ impl epi::App for App {
                 },
                 View::CorrPitch 
                 | View::CorrDelay => {
-                    let curve = corr_curve(&corrs[*time], *mindelay, *view == View::CorrDelay);
+                    let curve = corr_curve(&corrs[*time], *view == View::CorrDelay);
                     let plot = Plot::new("corr plot")
                         .line(curve)
                         .view_aspect(1.5)
@@ -186,7 +185,7 @@ fn main() {
     }
 
     println!("gui");
-    let app = App::new(pitches, corrs, ffts, p.minscan.0);
+    let app = App::new(pitches, corrs, ffts);
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = false;
     eframe::run_native(Box::new(app), native_options);
