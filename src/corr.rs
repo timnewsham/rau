@@ -128,3 +128,23 @@ impl SDF {
         }
     }
 }
+
+// Given x[k-1], x[k] and x[k+1], estimate the true peak at x[k+d] by fitting to a parabola.
+// Returns (d, x_estimated[k+d]).
+// Ref: Survey on Extraction of Sinusoids in Stationary Sounds, Keller and Merchand, 2002.
+pub fn parabolic_fit_peak_correction(xprev: f64, x: f64, xnext: f64) -> (f64, f64) {
+    let d = 0.5 * (xprev - xnext) / (xprev - 2.0 * x + xnext);
+    let peak = x - 0.25 * d * (xprev - xnext);
+    (d, peak)
+}
+
+// Return estimate of the true peak index and value near x[k] by fitting to a parabola.
+pub fn parabolic_fit_peak(x: &Vec<f64>, k: usize) -> (f64, f64) {
+    if k == 0 || k == x.len() - 1 {
+        (k as f64, x[k])
+    } else {
+        let (d, peak) = parabolic_fit_peak_correction(x[k-1], x[k], x[k+1]);
+        (k as f64 + d, peak)
+    }
+}
+
