@@ -1,52 +1,14 @@
 
 use std::sync::Arc;
 use num_complex::Complex;
-use num_traits::identities::Zero;
 use rustfft::*;
 use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
-
+use crate::corr::AutoCorr;
 
 const THRESH1: f64 = 0.5; // threshold for detection as a factor of r0
 const THRESH2: f64 = 12.0; // threshold of autocorr fft peak power, in dB
 
 fn from_db(x: f64) -> f64 { (10.0f64).powf(x / 10.0) }
-
-pub struct AutoCorr {
-    pub n: usize, // size of input data
-    pub k: usize, // number of autocorr values desired
-
-    fft: Arc<dyn Fft<f64>>,
-    pub buf: Vec<Complex<f64>>,
-}
-
-impl AutoCorr {
-    pub fn new(n: usize, k: usize) -> Self {
-        let mut planner = FftPlanner::new();
-        Self {
-            n, k,
-            fft: planner.plan_fft_forward(n + k),
-            buf: vec![Complex::zero(); n+k],
-        }
-    }
-
-    // Given buf[0..n] filled with data, compute normalized autocorr into buf[0..k]'s "re" field.
-    pub fn process(&mut self) {
-        // zeropad buf
-        let (n,k) = (self.n, self.k);
-        self.buf[n..n+k].iter_mut().for_each(|c| *c = Complex::zero());
-
-        // approximate autocorr with fft
-        self.fft.process(&mut self.buf); // forward fft
-        self.buf.iter_mut().for_each(|v| *v = *v * v.conj());
-        self.fft.process(&mut self.buf); // inverse fft, modulo scaling, which we normalize away anyway
-
-        // normalize results and copy to output
-        if self.buf[0].re != 0.0 {
-            let inv_r0 = 1.0 / self.buf[0].re;
-            self.buf[0..k].iter_mut().for_each(|v| v.re *= inv_r0);
-        }
-    }
-}
 
 // Pitch detection using fft of autocorrelation to find fundamental.
 pub struct Pitch {
