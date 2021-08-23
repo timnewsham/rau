@@ -1,12 +1,12 @@
 
 use std::sync::Arc;
 use num_complex::Complex;
+use num_traits::identities::Zero;
 use rustfft::*;
 use crate::resampler::Resampler;
 use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
 //use crate::module::*;
 
-fn from_db(x: f64) -> f64 { (10.0f64).powf(x / 10.0) }
 
 /*
 const THRESH1: f64 = 0.75; // threshold for detection as a factor of r0
@@ -20,6 +20,45 @@ const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
 //const DOWNRATE: usize = 8;
 const DOWNRATE: usize = 1;
+
+fn from_db(x: f64) -> f64 { (10.0f64).powf(x / 10.0) }
+
+pub struct AutoCorr {
+    pub n: usize, // size of input data
+    pub k: usize, // number of autocorr values desired
+
+    fft: Arc<dyn Fft<f64>>,
+    pub buf: Vec<Complex<f64>>,
+}
+
+impl AutoCorr {
+    pub fn new(n: usize, k: usize) -> Self {
+        let mut planner = FftPlanner::new();
+        Self {
+            n, k,
+            fft: planner.plan_fft_forward(n + k),
+            buf: vec![Complex::zero(); n+k],
+        }
+    }
+
+    // Given buf[0..n] filled with data, compute normalized autocorr into buf[0..k]'s "re" field.
+    pub fn process(&mut self) {
+        // zeropad buf
+        let (n,k) = (self.n, self.k);
+        self.buf[n..n+k].iter_mut().for_each(|c| *c = Complex::zero());
+
+        // approximate autocorr with fft
+        self.fft.process(&mut self.buf); // forward fft
+        self.buf.iter_mut().for_each(|v| *v = *v * v.conj());
+        self.fft.process(&mut self.buf); // inverse fft, modulo scaling, which we normalize away anyway
+
+        // normalize results and copy to output
+        if self.buf[0].re != 0.0 {
+            let inv_r0 = 1.0 / self.buf[0].re;
+            self.buf[0..k].iter_mut().for_each(|v| v.re *= inv_r0);
+        }
+    }
+}
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
 // XXX take FFT of autocorr to find true fundamental
@@ -39,7 +78,7 @@ pub struct Pitch {
     pub power: f64, // power of the fft of the autocorr for the note
     pub corr: f64, // autocorr for the note
     pub fftdata: Vec<Complex<f64>>,
-    pub corrdata: Vec<f64>,
+    pub corrdata: AutoCorr,
 }
 
 pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
@@ -137,14 +176,7 @@ impl Pitch {
             power: 0.0,
 
             fftdata: vec![Complex{ re: 0.0, im: 0.0 }; maxscan.0],
-            corrdata: vec![0.0; maxscan.0],
-        }
-    }
-
-    fn pack_fft_data(&mut self) {
-        for n in 0 .. self.maxscan.0 {
-            // XXX somewhat wasteful using complex fft on real data series
-            self.fftdata[n] = Complex{ re: self.corrdata[n - self.minscan.0], im: 0.0 };
+            corrdata: AutoCorr::new(winsamples, maxscan.0),
         }
     }
 
@@ -164,16 +196,29 @@ impl Pitch {
     fn detect(&mut self) {
         assert!(self.data.len() == self.size);
         //autocorrs(&mut self.corrdata, &self.data, self.minscan, self.maxscan);
-        fast_autocorrs(&mut self.corrdata, &self.data, self.maxscan, &self.fft_for_fast_autocorr);
-        self.pack_fft_data();
+        //fast_autocorrs(&mut self.corrdata, &self.data, self.maxscan, &self.fft_for_fast_autocorr);
+
+        // copy data into corrdata and process it to get autocorrs
+        for n in 0..self.data.len() {
+            self.corrdata.buf[n] = Complex{ re: self.data[n], im: 0.0 };
+        }
+        self.corrdata.process();
+
+        // copy autocorrs to fftdata.
+        // XXX we could compute fft destructively directly in corrdata.buf for efficiency,
+        // but right now pitchviz wants access to the raw corrdata..  future optimization.
+        assert!(self.fftdata.len() == self.corrdata.k);
+        for n in 0..self.fftdata.len() {
+            self.fftdata[n] = self.corrdata.buf[n];
+        }
+
         self.fft.process(&mut self.fftdata);
         let (fftidx,pow) = max_fft(&self.fftdata);
 
-        assert!(self.fftdata.len() == self.corrdata.len());
 
         // corridx loses some precision due.. perhaps its best to hunt around near corridx for the autocorr local max?
         let corridx = if fftidx > 1 { self.fftdata.len() / fftidx } else { 0 };
-        let rdelay = self.corrdata[corridx];
+        let rdelay = self.corrdata.buf[corridx].re;
         self.power = pow;
         self.corr = rdelay;
         if fftidx > 1 && pow > from_db(THRESH2) && rdelay > THRESH1 {

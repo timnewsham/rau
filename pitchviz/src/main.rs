@@ -179,7 +179,7 @@ fn main() {
     let mut ffts = Vec::new();
     for Sample{left, right: _} in samples {
         if let Some(_) = p.proc_sample(left) {
-            corrs.push(p.corrdata.iter().copied().collect());
+            corrs.push(p.corrdata.buf[0..p.corrdata.k].iter().map(|v| v.re).collect());
             ffts.push(p.fftdata.iter().copied().collect());
             pitches.push((p.note, to_db(p.power), p.corr));
         }
