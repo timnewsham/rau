@@ -1,5 +1,6 @@
 
 use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
+use crate::resampler;
 use crate::corr::{SDF, parabolic_fit_peak};
 
 const PEAK_THRESH: f64 = 0.9; // threshold first peak must be relative to max peak
@@ -10,7 +11,7 @@ const CLARITY_THRESH: f64 = 0.80;
 pub struct Pitch {
     pub data: Vec<f64>, 
     size: usize, // how much data to collect into a batch
-    overlap: usize, // how much data to keep between batches, overlap < size
+    pub overlap: usize, // how much data to keep between batches, overlap < size
     min_note: Cent,
 
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
@@ -163,3 +164,74 @@ impl Pitch {
     }
 }
 
+pub struct PitchCorrect {
+    p: Pitch,
+    correction: f64,
+    overlap: Vec<f64>, // overlap data from previous window
+}
+
+// correct the note. XXX this should be a configurable parameter of the corrector
+fn correct(note: Cent) -> Cent {
+    let semitones = note.0 / 100.0;
+    let corrected = semitones.round();
+    Cent(100.0 * corrected)
+}
+
+impl PitchCorrect {
+    pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
+        let p = Pitch::new(min, max, overlapfrac);
+        let overlapsz = p.overlap;
+        Self { 
+            p,
+            correction: 1.0,
+            overlap: vec![0.0; overlapsz],
+        }
+    }
+
+    // We have inputs and a correction factor, generate new outputs.
+    pub fn repitch(&mut self) -> Vec<f64> {
+        // create buf of resampled data from p.data
+        // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
+        let mut r = resampler::Resampler::new_approx(self.correction, 50.0, 0.7, 16);
+        let mut data: Vec<f64> = Vec::new();
+        let mut pos = 0;
+        let n = self.p.data.len();
+        while data.len() < n {
+            r.resample(self.p.data[pos], |x| if data.len() < n { data.push(x); });
+            pos += 1;
+
+            // simplistic looping. better approach would be loop at a good phase matching point.
+            // hopefully overlap mixing will save us here...
+            if pos >= n { pos = 0; }
+        }
+
+        // mix in the previous overlap with a linear fade
+        for n in 0 .. self.overlap.len() {
+            let alpha = n as f64 / self.overlap.len() as f64;
+            data[n] = (1.0 - alpha) * self.overlap[n] + alpha * data[n];
+        }
+
+        // save the end as the next overlap, and return the prefix before that overlap.
+        let split = data.len() - self.overlap.len();
+        self.overlap.copy_from_slice(&data[split ..]);
+        data.truncate(split);
+        data
+    }
+
+    // Process next sample, maybe generating a sequence of corrected samples
+    pub fn process(&mut self, samp: f64) -> Option<Vec<f64>> {
+        if let Some(result) = self.p.proc_sample(samp) {
+            if let Some(note) = result {
+                let note2 = correct(note);
+                let Hz(f1) = note.into();
+                let Hz(f2) = note2.into();
+                self.correction = f2 / f1;
+            } else {
+                self.correction = 1.0;
+            }
+            Some(self.repitch())
+        } else {
+            None
+        }
+    } 
+}

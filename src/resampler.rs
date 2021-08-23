@@ -13,6 +13,24 @@ pub struct Resampler {
     phase: usize,
 }
 
+// Find a good rational approximation for x using small integers
+fn rational_approx(x: f64) -> (usize, usize) {
+    let calc_err = |(n, d)| (x - (n as f64 / d as f64)).powi(2);
+    let mut ratio = (1, 1);
+    let mut err = calc_err(ratio);
+    for d in 2..200 {
+        let n = (x * d as f64).round() as usize;
+        let r = (n, d);
+        let e = calc_err(r);
+        if e < err {
+            ratio = r;
+            err = e;
+        }
+    }
+
+    ratio
+}
+
 impl Resampler {
     // resample 44100->48000 (160/147 ratio), LP 70dB down with cutoff 80% of 22050 (17640Hz), 32-order FIR
     pub fn new_441_to_480() -> Self {
@@ -22,6 +40,11 @@ impl Resampler {
     // downsample by 1/down with 70dB down, cutoff at 80% of new sampling rate, 32-order FIR.
     pub fn new_down(down: usize) -> Self {
         Self::new(1, down, 70.0, 0.8, 32)
+    }
+
+    pub fn new_approx(f: f64, atten: f64, cutoff: f64, order: usize) -> Self {
+        let (n,m) = rational_approx(f);
+        Self::new(n, m, atten, cutoff, order)
     }
 
     pub fn new(n: usize, m: usize, atten: f64, cutoff: f64, order: usize) -> Self {
