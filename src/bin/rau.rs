@@ -201,23 +201,8 @@ fn test_loader() -> Result<(), String> {
 }
 
 #[allow(dead_code)]
-fn test_pitch() {
-    // verify that the storage is shifting properly
-    let mut p = rau::pitch::Pitch::new(Samples(10), Samples(3));
-    for n in 0..9 {
-        p.proc_sample(n as f64);
-    }
-    println!("storage: {:?}", p.data);
-    p.proc_sample(9.0);
-    println!("storage: {:?}", p.data);
-
-    // verify that the window function is sane
-    //p.window.iter().copied().for_each(plot1);
-}
-
-#[allow(dead_code)]
 fn show_pitch() {
-    let mut p = rau::pitch::Pitch::new(Sec(0.050), Sec(0.010));
+    let mut p = rau::pitch::Pitch::new(Cent(-1200.0), Cent(1200.0), 0.5);
     let samps = read_wav_at("pitch.wav", 48000.0);
     let mut last_note = None;
     for Sample{left, right: _} in samps {

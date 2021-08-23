@@ -2,7 +2,8 @@
 use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
 use crate::corr::{SDF, parabolic_fit_peak};
 
-const THRESH: f64 = 0.9; // threshold first peak must be relative to max peak
+const PEAK_THRESH: f64 = 0.9; // threshold first peak must be relative to max peak
+const CLARITY_THRESH: f64 = 0.80;
 
 // Pitch detection using NSDF to find fundamental.
 // ref: https://www.cs.otago.ac.nz/research/publications/oucs-2008-03.pdf
@@ -10,12 +11,13 @@ pub struct Pitch {
     pub data: Vec<f64>, 
     size: usize, // how much data to collect into a batch
     overlap: usize, // how much data to keep between batches, overlap < size
+    min_note: Cent,
 
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub clarity: f64, // measure of how strong the note is
     pub nsdf: SDF,
 
-    cnt: usize,
+    cnt: usize, // XXX debug helper
 }
 
 pub fn period_to_note(period: impl Into<Sec>) -> Cent {
@@ -66,23 +68,40 @@ fn first_peak_above_thresh(peaks: &Vec<(f64, f64)>, thresh: f64) -> (f64, f64) {
     unreachable!();
 }
 
+fn note_to_period(note: Cent) -> Samples {
+    let Hz(freq) = note.into();
+    let period = Sec(1.0 / freq);
+    period.into()
+}
+
+const MIN_PERIODS: usize = 6; // bigger gives better accuracy but more latency and computation.
+
 impl Pitch {
-    pub fn new(winsz: impl Into<Samples>, overlap: impl Into<Samples>) -> Self {
-        let Samples(winsamples) = winsz.into();
-        let Samples(overlapsamples) = overlap.into();
+    // Pitch detector for range of notes min..max.
+    // overlap is a fraction of the total window that we keep between windows.
+    pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlap: f64) -> Self {
+        let min_note: Cent = min.into();
+        let max_note: Cent = max.into();
+        assert!(0.0 < overlap && overlap < 1.0);
+        assert!(min_note < max_note);
+
+        let Samples(max_period) = note_to_period(min_note);
+        let winsamples = max_period * MIN_PERIODS;
+        let overlapsamples = (winsamples as f64 * overlap) as usize;
         assert!(overlapsamples < winsamples);
 
         Self {
             data: Vec::new(),
             size: winsamples,
             overlap: overlapsamples,
+            min_note,
 
             note: None,
             clarity: 0.0,
 
-            nsdf: SDF::new(winsamples, winsamples), // XXX k can be smaller, based on min pitch to detect
+            nsdf: SDF::new(winsamples, max_period),
 
-            cnt: 0,
+            cnt: 0, // XXX debug
         }
     }
 
@@ -107,20 +126,21 @@ impl Pitch {
         // then find the first one that is within THRESH of the biggest one.
         let maxdelays = maxes(&self.nsdf.buf[0 .. self.nsdf.k]);
         if maxdelays.len() > 1 {
-if self.cnt == 70 { println!("maxdelays {:?}", maxdelays); }
+            //if self.cnt == 70 { println!("maxdelays {:?}", maxdelays); }
             let peaks = maxdelays[1..].iter().map(|idx| parabolic_fit_peak(&self.nsdf.buf, *idx)).collect();
-if self.cnt == 70 { println!("peaks {:?}", peaks); }
             let (_, peakval) = max_peak(&peaks);
-if self.cnt == 70 { println!("peakval {:?}", peakval); }
-            let (lag, clarity) = first_peak_above_thresh(&peaks, THRESH * peakval);
-if self.cnt == 70 { println!("lag {:?} clarity {:?}", lag, clarity); }
+            let (lag, clarity) = first_peak_above_thresh(&peaks, PEAK_THRESH * peakval);
 
             // XXX no conversions exist yet for fractional Samples.
             let period = lag / SAMPLE_RATE; // period in seconds
 
-            // XXX some thresholding for returning None as a note
-            self.note = Some(Hz(1.0 / period).into());
             self.clarity = clarity;
+            let note: Cent = Hz(1.0 / period).into();
+            if clarity > CLARITY_THRESH && note >= self.min_note {
+                self.note = Some(Hz(1.0 / period).into());
+            } else {
+                self.note = None;
+            }
         } else {
             self.note = None;
             self.clarity = 0.0;

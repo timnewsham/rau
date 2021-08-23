@@ -79,7 +79,7 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, 
 
 
 impl epi::App for App {
-    fn name(&self) -> &str { "Phase Fun" }
+    fn name(&self) -> &str { "Pitch Fun" }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let Self { pitches, nsdfs, view, time } = self;
         let Sec(now) = Samples(*time).into();
@@ -130,7 +130,7 @@ fn main() {
 
     println!("compute pitches and NSDFs");
     //let mut p = Pitch::new(Sec(0.050), Sec(0.010));
-    let mut p = Pitch::new(Sec(0.030), Sec(0.002));
+    let mut p = Pitch::new(Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.5);
     let mut nsdfs: Vec<Vec<f64>> = Vec::new();
     let mut pitches: Vec<(Option<Cent>, f64)> = Vec::new();
     for Sample{left, right: _} in samples {
