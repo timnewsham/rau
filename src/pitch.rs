@@ -79,27 +79,25 @@ const MIN_PERIODS: usize = 6; // bigger gives better accuracy but more latency a
 impl Pitch {
     // Pitch detector for range of notes min..max.
     // overlap is a fraction of the total window that we keep between windows.
-    pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlap: f64) -> Self {
+    pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
         let min_note: Cent = min.into();
         let max_note: Cent = max.into();
-        assert!(0.0 < overlap && overlap < 1.0);
+        assert!(0.0 < overlapfrac && overlapfrac < 1.0);
         assert!(min_note < max_note);
 
         let Samples(max_period) = note_to_period(min_note);
-        let winsamples = max_period * MIN_PERIODS;
-        let overlapsamples = (winsamples as f64 * overlap) as usize;
-        assert!(overlapsamples < winsamples);
+        let size = max_period * MIN_PERIODS;
+        let overlap = (size as f64 * overlapfrac) as usize;
+        assert!(overlap < size);
 
         Self {
             data: Vec::new(),
-            size: winsamples,
-            overlap: overlapsamples,
-            min_note,
+            size, overlap, min_note,
 
             note: None,
             clarity: 0.0,
 
-            nsdf: SDF::new(winsamples, max_period),
+            nsdf: SDF::new(size, max_period),
 
             cnt: 0, // XXX debug
         }
