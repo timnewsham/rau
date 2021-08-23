@@ -40,6 +40,7 @@ impl Loader {
         crate::flange::init(self);
         crate::keyboard::init(self);
         crate::phaser::init(self);
+        crate::pitch::init(self);
         crate::simple::init(self);
         crate::speaker::init(self);
         crate::util::init(self);

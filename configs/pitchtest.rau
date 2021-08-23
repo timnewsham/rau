@@ -1,0 +1,26 @@
+
+# the keyboard and speaker modules
+key keyboard 0.01
+speaker speaker
+
+# an oscillator and envelope generator
+portlfo osc2 sin 0.12 0.15 1.0
+portmult mult
+osc osc sawup 1.0 16
+viblfo osc2 sin 6.0 0.1 0.5
+vibmult mult
+env envelope 0.05 0.2 0.4 0.5
+envmult mult # to multiply envelope with oscillator
+correct pitchcorrect 300.0 880.0 0.75
+
+# a bunch of wires to hook everything up
+wire key:out portmult:in1
+wire portlfo:out portmult:in2
+wire portmult:out osc:freq
+wire key:gate env:gate
+wire osc:out envmult:in1
+wire env:out envmult:in2
+wire envmult:out correct:in
+wire correct:out speaker:left
+wire correct:out speaker:right
+

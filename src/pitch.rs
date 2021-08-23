@@ -2,6 +2,7 @@
 use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
 use crate::resampler;
 use crate::corr::{SDF, parabolic_fit_peak};
+use crate::module::*;
 
 const PEAK_THRESH: f64 = 0.9; // threshold first peak must be relative to max peak
 const CLARITY_THRESH: f64 = 0.80;
@@ -10,7 +11,7 @@ const CLARITY_THRESH: f64 = 0.80;
 // ref: https://www.cs.otago.ac.nz/research/publications/oucs-2008-03.pdf
 pub struct Pitch {
     pub data: Vec<f64>, 
-    size: usize, // how much data to collect into a batch
+    pub size: usize, // how much data to collect into a batch
     pub overlap: usize, // how much data to keep between batches, overlap < size
     min_note: Cent,
 
@@ -168,6 +169,11 @@ pub struct PitchCorrect {
     p: Pitch,
     correction: f64,
     overlap: Vec<f64>, // overlap data from previous window
+
+    // for module implementation
+    inp: f64,
+    buf: Vec<f64>,
+    pos: usize,
 }
 
 // correct the note. XXX this should be a configurable parameter of the corrector
@@ -178,13 +184,28 @@ fn correct(note: Cent) -> Cent {
 }
 
 impl PitchCorrect {
+    pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
+        if args.len() != 4 {
+            return Err(format!("usage: {} minfreq maxfreq overlap", args[0]));
+        }
+        let minfreq = parse::<f64>("minfreq", args[1])?;
+        let maxfreq = parse::<f64>("maxfreq", args[2])?;
+        let overlap = parse::<f64>("order", args[3])?;
+        Ok( modref_new(Self::new(Hz(minfreq), Hz(maxfreq), overlap)) )
+    }
+
     pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
         let p = Pitch::new(min, max, overlapfrac);
         let overlapsz = p.overlap;
+        let outsz = p.size - p.overlap;
         Self { 
             p,
             correction: 1.0,
             overlap: vec![0.0; overlapsz],
+
+            inp: 0.0,
+            buf: vec![0.0; outsz],
+            pos: 0,
         }
     }
 
@@ -234,4 +255,40 @@ impl PitchCorrect {
             None
         }
     } 
+
+    pub fn advance(&mut self) {
+        if let Some(buf) = self.process(self.inp) {
+            assert!(buf.len() == self.buf.len());
+            self.buf.copy_from_slice(&buf);
+            self.pos = 0;
+        } else {
+            self.pos += 1;
+            if self.pos >= self.buf.len() { self.pos = 0; }
+        }
+    }
+}
+
+impl Module for PitchCorrect {
+    fn get_terminals(&self) -> (Vec<TerminalDescr>, Vec<TerminalDescr>) {
+        (vec!["in".to_string()],
+         vec!["out".to_string()])
+    }
+
+    fn get_output(&self, idx: usize) -> Option<f64> {
+        if idx == 0 { return Some(self.buf[self.pos]); }
+        None
+    }
+
+    fn set_input(&mut self, idx: usize, value: f64) {
+        if idx == 0 { self.inp = value; }
+    }
+
+    fn advance(&mut self) -> bool {
+        self.advance();
+        true
+    }
+}
+
+pub fn init(l: &mut Loader) {
+    l.register("pitchcorrect", PitchCorrect::from_cmd);
 }
