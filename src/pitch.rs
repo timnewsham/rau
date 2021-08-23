@@ -1,10 +1,15 @@
 
-//use std::f64::consts::PI;
+use std::sync::Arc;
+use num_complex::Complex;
+use rustfft::*;
 use crate::resampler::Resampler;
-use crate::units::{Samples, Hz, Cent, Sec};
+use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
 //use crate::module::*;
 
+fn from_db(x: f64) -> f64 { (10.0f64).powf(x / 10.0) }
+
 const THRESH: f64 = 0.75; // threshold for detection as a factor of r0
+const THRESH2: f64 = 24.0; // threshold of autocorr fft peak power, in dB
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
@@ -23,6 +28,9 @@ pub struct Pitch {
     pub maxscan: SamplesDown,
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub corr: f64,
+
+    fft: Arc<dyn Fft<f64>>,
+    pub fftdata: Vec<Complex<f64>>,
 }
 
 pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
@@ -31,7 +39,7 @@ pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
                 .zip(&data[delay..data.len()])
                 .map(|(a,b)| a*b)
                 .sum();
-    r / data.len() as f64
+    r / (data.len()-delay) as f64
 }
 
 fn autocorrs(data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) -> Vec<f64> {
@@ -75,17 +83,32 @@ impl Pitch {
     pub fn new(winsz: impl Into<SamplesDown>, overlap: impl Into<SamplesDown>) -> Self {
         let SamplesDown(winsamples) = winsz.into();
         let SamplesDown(overlapsamples) = overlap.into();
+        let mut planner = FftPlanner::new();
         assert!(overlapsamples < winsamples);
         Self {
             down_sample: Resampler::new_down(DOWNRATE),
             data: Vec::new(),
             size: winsamples,
             overlap: overlapsamples,
+            fft: planner.plan_fft_forward(winsamples),
+            fftdata: vec![Complex{ re: 0.0, im: 0.0 }; winsamples],
+
             // note: min becomes max and vice versa, because we're converting from freqs to periods
             maxscan: note_to_period(Cent(MIN_NOTE)).into(),
-            minscan: note_to_period(Cent(MAX_NOTE)).into(),
+            //minscan: note_to_period(Cent(MAX_NOTE)).into(),
+            minscan: SamplesDown(0),
             note: None,
             corr: 0.0,
+        }
+    }
+
+    fn pack_fft_data(&mut self, data: &Vec<f64>) {
+        for n in 0..self.size {
+            self.fftdata[n] = if self.minscan.0 <= n && n < self.maxscan.0 { 
+                                    Complex{ re: data[n - self.minscan.0], im: 0.0 }
+                                } else {
+                                    Complex{ re: 0.0, im: 0.0 }
+                                }
         }
     }
 
@@ -102,20 +125,51 @@ impl Pitch {
         return self.data.len() == self.size;
     }
 
-    pub fn autocorrs(&self) -> Vec<f64> {
+    fn detect(&mut self) {
+        let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
+
+        self.note = optnote.map(period_to_note);
+        self.corr = corr;
+    }
+
+    pub fn max_fft(&self) -> (Option<Cent>, f64) {
+        let mut idx = 0;
+        let mut max = self.fftdata[0].norm_sqr();
+        for n in 0..(self.fftdata.len() / 2) {
+            let p = self.fftdata[n].norm_sqr();
+            if p > max {
+                idx = n;
+                max = p;
+            }
+        }
+
+        // DOWNSAMPRATE = SAMPRATE/DOWNRATE, ie 48k/8.
+        // autocorr indices are in units of downsampled samples, ie. 1.0/DOWNSAMPRATE seconds apart.
+        // fft(autocorr) indices are DOWNSAMPRATE/fftdata.len() Hz apart
+        let downsamprate = SAMPLE_RATE / DOWNRATE as f64;
+        let freqfrac = idx as f64 / (self.fftdata.len() as f64);
+        let hz = freqfrac * downsamprate;
+        let note = if max > from_db(THRESH2) && hz > 0.0 { 
+                Some(Hz(hz).into()) 
+            } else { 
+                None 
+            };
+        (note, max)
+    }
+
+    // compute autocorrs and self.fftdata and return autocorrs
+    pub fn autocorrs(&mut self) -> Vec<f64> {
         assert!(self.data.len() == self.size);
-        autocorrs(&self.data, self.minscan, self.maxscan)
+        let corrs = autocorrs(&self.data, self.minscan, self.maxscan);
+        self.pack_fft_data(&corrs);
+        self.fft.process(&mut self.fftdata);
+        corrs
     }
 
     // return detected pitch and the normalized correlation, only when there is a newly computed value
     pub fn proc_sample(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
         if self.add_sample(samp) {
-            let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
-
-            // convert SamplesDown into Samples and then into a note
-            // XXX generic here?
-            self.note = optnote.map(period_to_note);
-            self.corr = corr;
+            self.detect();
             Some((self.note, self.corr))
         } else {
             None

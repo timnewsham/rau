@@ -8,6 +8,8 @@ edition = "2018"
 cpal = "0.13.3"
 device_query = "0.2.8"
 wav = "1.0.0"
+num-complex = "0.4.0"
+rustfft = "6.0.1"
 
 [workspace]
 members = ["pitchviz", "filtviz", "phaserviz", "flangerviz", "fftviz", "phaseviz", "genviz", "player"]

@@ -1,8 +1,8 @@
 
 use std::env::args;
-//use std::cmp;
+use num_complex::Complex;
 use eframe::{egui, epi};
-use egui::Color32;
+use egui::{Color32, remap};
 use egui::widgets::plot::{Line, Points, Values, Value, Plot, Legend};
 //use rau::speaker::{Sample, MidSide, ResamplingSpeaker};
 use rau::wav::{read_wav_at, Sample};
@@ -10,27 +10,34 @@ use rau::pitch::{Pitch, period_to_note};
 use rau::units::{Cent, Sec, Samples};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
-enum View { Pitch, CorrDelay, CorrPitch }
+enum View { Pitch, CorrDelay, CorrPitch, CorrFft }
 
 const FSAMP: f64 = 48000.0;
+const MINDB: f64 = -60.0;
 
 struct App {
     //speaker: ResamplingSpeaker,
     pitches: Vec<(Option<Cent>, f64)>,
     corrs: Vec<Vec<f64>>,
+    ffts: Vec<Vec<Complex<f64>>>,
     mindelay: usize,
     view: View,
     time: usize,
 }
 
 impl App {
-    fn new(pitches: Vec<(Option<Cent>, f64)>, corrs: Vec<Vec<f64>>, mindelay: usize) -> Self {
+    fn new(pitches: Vec<(Option<Cent>, f64)>, corrs: Vec<Vec<f64>>, ffts: Vec<Vec<Complex<f64>>>, mindelay: usize) -> Self {
         App {
-            pitches, corrs, mindelay,
+            pitches, corrs, ffts, mindelay,
             view: View::Pitch,
             time: 0,
         }
     }
+}
+
+fn to_db(pow: f64) -> f64 {
+    let db = 10.0 * pow.log(10.0);
+    if db.is_nan() || db < MINDB { MINDB } else { db }
 }
 
 fn corr_curve(corr: &Vec<f64>, mindelay: usize, show_delay: bool) -> Line {
@@ -50,6 +57,19 @@ fn corr_curve(corr: &Vec<f64>, mindelay: usize, show_delay: bool) -> Line {
         .name("Corr")
 }
 
+fn corr_fft_curve(fft: &Vec<Complex<f64>>) -> Line {
+    let fftsize = fft.len() / 2;
+    let maxhz = FSAMP / 2.0;
+    let dat = (3..fftsize).map(|i| {
+            let freq = remap(i as f64, 0.0..=(fftsize as f64), 0.0..=maxhz);
+            Value::new(freq.log(10.0), to_db(fft[i].norm_sqr()))
+        });
+
+    Line::new(Values::from_values_iter(dat))
+        .color(Color32::from_rgb(100, 200, 100))
+        .name("CorrFft")
+}
+
 fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, Points)
 {
     let dat1 = pitches.iter().enumerate().filter(|(_,p)| p.0.is_some()).map(|(n,p)| {
@@ -63,7 +83,8 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, 
 
     let dat2 = pitches.iter().enumerate().map(|(n,p)| {
             let Sec(sec) = Samples(n).into();
-            Value::new(sec, 1000.0 * p.1)
+            //Value::new(sec, 1000.0 * p.1)
+            Value::new(sec, 10.0 * p.1)
         });
     let l2 = Line::new(Values::from_values_iter(dat2))
         .color(Color32::from_rgb(200, 100, 100))
@@ -83,7 +104,7 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, 
 impl epi::App for App {
     fn name(&self) -> &str { "Phase Fun" }
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-        let Self { pitches, corrs, mindelay, view, time } = self;
+        let Self { pitches, corrs, ffts, mindelay, view, time } = self;
         let Sec(now) = Samples(*time).into();
         egui::TopBottomPanel::top("Filter Fun").show(ctx, |ui| {
             ui.heading("Controls");
@@ -92,6 +113,7 @@ impl epi::App for App {
                 ui.radio_value(view, View::Pitch, "Pitch");
                 ui.radio_value(view, View::CorrPitch, "CorrPitch");
                 ui.radio_value(view, View::CorrDelay, "CorrDelay");
+                ui.radio_value(view, View::CorrFft, "CorrFft");
             });
 
             match view {
@@ -118,6 +140,17 @@ impl epi::App for App {
                         ;
                     ui.add(plot);
                 },
+                View::CorrFft => {
+                    let curve = corr_fft_curve(&ffts[*time]);
+                    let plot = Plot::new("corrfft plot")
+                        .line(curve)
+                        .view_aspect(1.5)
+                        .include_y(30.0)
+                        .include_y(MINDB)
+                        .legend(Legend::default())
+                        ;
+                    ui.add(plot);
+                }
             }
         });
     }
@@ -135,15 +168,20 @@ fn main() {
     let mut p = Pitch::new(Sec(0.030), Sec(0.002));
     let mut corrs: Vec<Vec<f64>> = Vec::new();
     let mut pitches: Vec<(Option<Cent>, f64)> = Vec::new();
+    let mut ffts = Vec::new();
     for Sample{left, right: _} in samples {
         if let Some(x) = p.proc_sample(left) {
-            pitches.push(x);
+            //pitches.push(x);
             corrs.push(p.autocorrs());
+            ffts.push(p.fftdata.iter().copied().collect());
+            let (note, pow) = p.max_fft();
+            //println!("{:?}", note);
+            pitches.push((note, to_db(pow)));
         }
     }
 
     println!("gui");
-    let app = App::new(pitches, corrs, p.minscan.0);
+    let app = App::new(pitches, corrs, ffts, p.minscan.0);
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = false;
     eframe::run_native(Box::new(app), native_options);
