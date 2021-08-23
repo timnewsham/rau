@@ -17,7 +17,7 @@ const MINDB: f64 = -60.0;
 
 struct App {
     //speaker: ResamplingSpeaker,
-    pitches: Vec<(Option<Cent>, f64)>,
+    pitches: Vec<(Option<Cent>, f64, f64)>,
     corrs: Vec<Vec<f64>>,
     ffts: Vec<Vec<Complex<f64>>>,
     mindelay: usize,
@@ -26,7 +26,7 @@ struct App {
 }
 
 impl App {
-    fn new(pitches: Vec<(Option<Cent>, f64)>, corrs: Vec<Vec<f64>>, ffts: Vec<Vec<Complex<f64>>>, mindelay: usize) -> Self {
+    fn new(pitches: Vec<(Option<Cent>, f64, f64)>, corrs: Vec<Vec<f64>>, ffts: Vec<Vec<Complex<f64>>>, mindelay: usize) -> Self {
         App {
             pitches, corrs, ffts, mindelay,
             view: View::Pitch,
@@ -41,7 +41,7 @@ fn to_db(pow: f64) -> f64 {
 }
 
 fn corr_curve(corr: &Vec<f64>, mindelay: usize, show_delay: bool) -> Line {
-    let dat = corr.iter().enumerate().map(|(n,r)| {
+    let dat = corr.iter().enumerate().filter(|(n,_)| *n > 0).map(|(n,r)| {
             let samps = Samples(n + mindelay);
             let x = if show_delay {
                     let Sec(sec) = samps.into();
@@ -70,7 +70,7 @@ fn corr_fft_curve(fft: &Vec<Complex<f64>>) -> Line {
         .name("CorrFft")
 }
 
-fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, Points)
+fn pitch_curve(pitches: &Vec<(Option<Cent>, f64, f64)>, time: f64) -> (Points, Line, Line, Points)
 {
     let dat1 = pitches.iter().enumerate().filter(|(_,p)| p.0.is_some()).map(|(n,p)| {
             let Cent(cent) = p.0.unwrap();
@@ -83,21 +83,28 @@ fn pitch_curve(pitches: &Vec<(Option<Cent>, f64)>, time: f64) -> (Points, Line, 
 
     let dat2 = pitches.iter().enumerate().map(|(n,p)| {
             let Sec(sec) = Samples(n).into();
-            //Value::new(sec, 1000.0 * p.1)
-            Value::new(sec, 10.0 * p.1)
+            Value::new(sec, 1000.0 * p.2)
         });
     let l2 = Line::new(Values::from_values_iter(dat2))
         .color(Color32::from_rgb(200, 100, 100))
         .name("Corr");
 
+    let dat3 = pitches.iter().enumerate().map(|(n,p)| {
+            let Sec(sec) = Samples(n).into();
+            Value::new(sec, 100.0 * p.1)
+        });
+    let l3 = Line::new(Values::from_values_iter(dat3))
+        .color(Color32::from_rgb(200, 200, 100))
+        .name("Pow");
+
     let Sec(now) = Sec(time).into();
-    let dat3 = vec![Value::new(now, 0.0)];
-    let p3 = Points::new(Values::from_values(dat3))
+    let datN = vec![Value::new(now, 0.0)];
+    let pN = Points::new(Values::from_values(datN))
         .radius(5.0)
         .color(Color32::from_rgb(100, 100, 200))
-        .name("Cents");
+        .name("Time");
 
-    (p1, l2, p3)
+    (p1, l2, l3, pN)
 }
 
 
@@ -118,11 +125,12 @@ impl epi::App for App {
 
             match view {
                 View::Pitch => {
-                    let (curve1, curve2, curve3) = pitch_curve(&*pitches, now);
+                    let (curve1, curve2, curve3, curve4) = pitch_curve(&*pitches, now);
                     let plot = Plot::new("pitch plot")
                         .points(curve1)
                         .line(curve2)
-                        .points(curve3)
+                        .line(curve3)
+                        .points(curve4)
                         .view_aspect(1.5)
                         .legend(Legend::default())
                         ;
@@ -167,16 +175,13 @@ fn main() {
     //let mut p = Pitch::new(Sec(0.050), Sec(0.010));
     let mut p = Pitch::new(Sec(0.030), Sec(0.002));
     let mut corrs: Vec<Vec<f64>> = Vec::new();
-    let mut pitches: Vec<(Option<Cent>, f64)> = Vec::new();
+    let mut pitches: Vec<(Option<Cent>, f64, f64)> = Vec::new();
     let mut ffts = Vec::new();
     for Sample{left, right: _} in samples {
-        if let Some(x) = p.proc_sample(left) {
-            //pitches.push(x);
-            corrs.push(p.autocorrs());
+        if let Some(_) = p.proc_sample(left) {
+            corrs.push(p.corrdata.iter().copied().collect());
             ffts.push(p.fftdata.iter().copied().collect());
-            let (note, pow) = p.max_fft();
-            //println!("{:?}", note);
-            pitches.push((note, to_db(pow)));
+            pitches.push((p.note, to_db(p.power), p.corr));
         }
     }
 

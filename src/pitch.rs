@@ -8,12 +8,18 @@ use crate::units::{Samples, Hz, Cent, Sec, SAMPLE_RATE};
 
 fn from_db(x: f64) -> f64 { (10.0f64).powf(x / 10.0) }
 
-const THRESH: f64 = 0.75; // threshold for detection as a factor of r0
+/*
+const THRESH1: f64 = 0.75; // threshold for detection as a factor of r0
 const THRESH2: f64 = 24.0; // threshold of autocorr fft peak power, in dB
+*/
+const THRESH1: f64 = 0.5; // threshold for detection as a factor of r0
+const THRESH2: f64 = 12.0; // threshold of autocorr fft peak power, in dB
+
 const MIN_NOTE: f64 = -2.0 * 12.0 * 100.0; // 2 octaves lower than A440
 //const MAX_NOTE: f64 = (3.0 * 12.0 + 3.0) * 100.0; // C 3 octaves higher than A440
 const MAX_NOTE: f64 = (2.0 * 12.0 + 3.0) * 100.0; // C 2 octaves higher than A440
 const DOWNRATE: usize = 8;
+//const DOWNRATE: usize = 4;
 
 // Pitch detection by detecting lag that maximizes the autocorrelation
 // XXX take FFT of autocorr to find true fundamental
@@ -26,11 +32,13 @@ pub struct Pitch {
     overlap: usize, // how much data to keep between batches, overlap < size
     pub minscan: SamplesDown,
     pub maxscan: SamplesDown,
-    pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
-    pub corr: f64,
-
     fft: Arc<dyn Fft<f64>>,
+
+    pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
+    pub power: f64, // power of the fft of the autocorr for the note
+    pub corr: f64, // autocorr for the note
     pub fftdata: Vec<Complex<f64>>,
+    pub corrdata: Vec<f64>,
 }
 
 pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
@@ -42,31 +50,29 @@ pub fn autocorr(data: &Vec<f64>, delay: usize) -> f64 {
     r / (data.len()-delay) as f64
 }
 
-fn autocorrs(data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) -> Vec<f64> {
+// compute autocorrelation of data into dst
+fn autocorrs(dst: &mut Vec<f64>, data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) {
     let mut r0 = autocorr(data, 0);
     if r0 == 0.0 { r0 = 0.000001 };
 
-    (minscan.0 .. maxscan.0)
-        .map(|delay| autocorr(data, delay) / r0)
-        .collect()
+    for delay in minscan.0 .. maxscan.0 {
+        dst[delay] = autocorr(data, delay) / r0;
+    }
 }
 
-fn max_autocorr(data: &Vec<f64>, minscan: SamplesDown, maxscan: SamplesDown) -> (Option<SamplesDown>, f64) {
-    let mut r0 = autocorr(data, 0);
-    if r0 == 0.0 { r0 = 0.000001 };
-
-    let mut maxr = 0.0;
-    let mut maxdelay = None;
-    for delay in minscan.0 .. maxscan.0 {
-        let r = autocorr(data, delay);
-        if r > maxr {
-            maxr = r;
-            if maxr > THRESH * r0 {
-                maxdelay = Some(SamplesDown(delay));
-            }
+// Maximum FFT index and value
+pub fn max_fft(fftdata: &Vec<Complex<f64>>) -> (usize, f64) {
+    let sz = fftdata.len() / 2;
+    let mut idx = 0;
+    let mut max = fftdata[0].norm_sqr();
+    for n in 0..sz {
+        let p = fftdata[n].norm_sqr();
+        if p > max {
+            idx = n;
+            max = p;
         }
     }
-    (maxdelay, maxr / r0)
+    (idx, max)
 }
 
 pub fn period_to_note(period: impl Into<Sec>) -> Cent {
@@ -84,6 +90,8 @@ impl Pitch {
         let SamplesDown(winsamples) = winsz.into();
         let SamplesDown(overlapsamples) = overlap.into();
         let mut planner = FftPlanner::new();
+        //let maxscan = note_to_period(Cent(MIN_NOTE)).into(); // MIN freq becomes max period
+        let maxscan = SamplesDown(winsamples);
         assert!(overlapsamples < winsamples);
         Self {
             down_sample: Resampler::new_down(DOWNRATE),
@@ -91,24 +99,24 @@ impl Pitch {
             size: winsamples,
             overlap: overlapsamples,
             fft: planner.plan_fft_forward(winsamples),
-            fftdata: vec![Complex{ re: 0.0, im: 0.0 }; winsamples],
 
             // note: min becomes max and vice versa, because we're converting from freqs to periods
-            maxscan: note_to_period(Cent(MIN_NOTE)).into(),
+            maxscan: maxscan,
             //minscan: note_to_period(Cent(MAX_NOTE)).into(),
             minscan: SamplesDown(0),
             note: None,
             corr: 0.0,
+            power: 0.0,
+
+            fftdata: vec![Complex{ re: 0.0, im: 0.0 }; maxscan.0],
+            corrdata: vec![0.0; maxscan.0],
         }
     }
 
-    fn pack_fft_data(&mut self, data: &Vec<f64>) {
-        for n in 0..self.size {
-            self.fftdata[n] = if self.minscan.0 <= n && n < self.maxscan.0 { 
-                                    Complex{ re: data[n - self.minscan.0], im: 0.0 }
-                                } else {
-                                    Complex{ re: 0.0, im: 0.0 }
-                                }
+    fn pack_fft_data(&mut self) {
+        for n in 0 .. self.maxscan.0 {
+            // XXX somewhat wasteful using complex fft on real data series
+            self.fftdata[n] = Complex{ re: self.corrdata[n - self.minscan.0], im: 0.0 };
         }
     }
 
@@ -126,51 +134,38 @@ impl Pitch {
     }
 
     fn detect(&mut self) {
-        let (optnote, corr) = max_autocorr(&self.data, self.minscan, self.maxscan);
-
-        self.note = optnote.map(period_to_note);
-        self.corr = corr;
-    }
-
-    pub fn max_fft(&self) -> (Option<Cent>, f64) {
-        let mut idx = 0;
-        let mut max = self.fftdata[0].norm_sqr();
-        for n in 0..(self.fftdata.len() / 2) {
-            let p = self.fftdata[n].norm_sqr();
-            if p > max {
-                idx = n;
-                max = p;
-            }
-        }
-
-        // DOWNSAMPRATE = SAMPRATE/DOWNRATE, ie 48k/8.
-        // autocorr indices are in units of downsampled samples, ie. 1.0/DOWNSAMPRATE seconds apart.
-        // fft(autocorr) indices are DOWNSAMPRATE/fftdata.len() Hz apart
-        let downsamprate = SAMPLE_RATE / DOWNRATE as f64;
-        let freqfrac = idx as f64 / (self.fftdata.len() as f64);
-        let hz = freqfrac * downsamprate;
-        let note = if max > from_db(THRESH2) && hz > 0.0 { 
-                Some(Hz(hz).into()) 
-            } else { 
-                None 
-            };
-        (note, max)
-    }
-
-    // compute autocorrs and self.fftdata and return autocorrs
-    pub fn autocorrs(&mut self) -> Vec<f64> {
         assert!(self.data.len() == self.size);
-        let corrs = autocorrs(&self.data, self.minscan, self.maxscan);
-        self.pack_fft_data(&corrs);
+        autocorrs(&mut self.corrdata, &self.data, self.minscan, self.maxscan);
+        self.pack_fft_data();
         self.fft.process(&mut self.fftdata);
-        corrs
+        let (fftidx,pow) = max_fft(&self.fftdata);
+
+        assert!(self.fftdata.len() == self.corrdata.len());
+
+        // corridx loses some precision due.. perhaps its best to hunt around near corridx for the autocorr local max?
+        let corridx = if fftidx > 1 { self.fftdata.len() / fftidx } else { 0 };
+        let rdelay = self.corrdata[corridx];
+        self.power = pow;
+        self.corr = rdelay;
+        if fftidx > 1 && pow > from_db(THRESH2) && rdelay > THRESH1 {
+            // DOWNSAMPRATE = SAMPRATE/DOWNRATE, ie 48k/8.
+            // autocorr indices are in units of downsampled samples, ie. 1.0/DOWNSAMPRATE seconds apart.
+            // fft(autocorr) indices are DOWNSAMPRATE/fftdata.len() Hz apart
+            let downsamprate = SAMPLE_RATE / DOWNRATE as f64;
+            let freqfrac = fftidx as f64 / (self.fftdata.len() as f64);
+            let hz = freqfrac * downsamprate;
+            self.note = Some(Hz(hz).into());
+        } else {
+            self.note = None;
+        }
     }
 
-    // return detected pitch and the normalized correlation, only when there is a newly computed value
-    pub fn proc_sample(&mut self, samp: f64) -> Option<(Option<Cent>, f64)> {
+    // return detected pitch if we've processed enough data
+    // if not None, fftdata, corrdata, power, note, etc. have been updated and are available
+    pub fn proc_sample(&mut self, samp: f64) -> Option<Option<Cent>> {
         if self.add_sample(samp) {
             self.detect();
-            Some((self.note, self.corr))
+            Some(self.note)
         } else {
             None
         }
