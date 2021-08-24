@@ -2,6 +2,8 @@
 use std::env;
 use rau::speaker::{Speaker, SamplePlayer};
 use rau::wav::{read_wav_at, Sample};
+use rau::module::Module;
+use rau::file::Tape;
 use rau::units::*;
 use rau::pitch::*;
 
@@ -43,10 +45,14 @@ fn main() {
     //let mut c = PitchCorrect::new(nop, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
     let mut c = PitchCorrect::new(mono_a, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
     let mut speaker = Speaker::new();
+    let mut tape = Tape::new("repitched.s16");
     for Sample{left, right: _} in samples {
         if let Some(outs) = c.process(left) {
             for out in outs {
                 speaker.play(Sample{ left: out, right: out });
+
+                tape.set_input(0, out);
+                tape.advance();
             }
         }
     }

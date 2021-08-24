@@ -176,9 +176,9 @@ pub struct PitchCorrect {
     correctfn: CorrectFn,
     p: Pitch,
     overlap: Vec<f64>, // overlap data from previous window (after repitching)
-    inputphase: f64, // phase at the start of the current window of input (before repitching)
     inputperiod: Option<f64>, // detected period for current window
-    transphase: f64, // phase at the midpoint of the stored overlap data
+    inputphase: f64, // phase at the start of the current window of input (before repitching), as frac of periods
+    transphase: f64, // phase at the midpoint of the stored overlap data, as frac of periods
 
     // for module implementation
     inp: f64,
@@ -286,7 +286,7 @@ impl PitchCorrect {
             pos += 1;
         }
 
-        // create buf of resampled data from p.data
+        // fill data[] with resampled data from p.data until full
         let n = self.p.data.len();
         assert!(delay < n);
         while data.len() < n {
@@ -317,12 +317,14 @@ impl PitchCorrect {
         data.truncate(chunk_len);
 
         // update phases
-        let startpoint = chunk_len as f64;
-        let transmidpoint = startpoint + mid_overlap;
+        let nextstartpoint = chunk_len as f64;
         self.inputphase = match self.inputperiod {
             None => 0.0,
-            Some(inper) => (self.inputphase + startpoint / inper as f64) % 1.0,
+            Some(inper) => (self.inputphase + nextstartpoint / inper as f64) % 1.0,
         };
+
+        // need to remove delay since inputphase didnt start until after delay samples.
+        let transmidpoint = (chunk_len - delay) as f64 + mid_overlap;
         self.transphase = match corrected_period {
             None => 0.0,
             Some(cper) => (self.inputphase + transmidpoint / cper) % 1.0,
