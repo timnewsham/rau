@@ -169,12 +169,12 @@ impl Pitch {
     }
 }
 
-type CorrectFn = fn(Cent) -> Cent;
+// returns a factor of how much to increase the output frequency.
+type CorrectFn = fn(Option<Cent>) -> f64;
 
 pub struct PitchCorrect {
     correctfn: CorrectFn,
     p: Pitch,
-    correction: f64,
     overlap: Vec<f64>, // overlap data from previous window (after repitching)
     inputphase: f64, // phase at the start of the current window of input (before repitching)
     inputperiod: Option<f64>, // detected period for current window
@@ -186,11 +186,19 @@ pub struct PitchCorrect {
     pos: usize,
 }
 
-// correct the note. XXX this should be a configurable parameter of the corrector
-pub fn quantize_note(note: Cent) -> Cent {
-    let semitones = note.0 / 100.0;
-    let corrected = semitones.round();
-    Cent(100.0 * corrected)
+// Quantize the note (if known) to the nearest 100 cents.
+pub fn quantize_note(note: Option<Cent>) -> f64 {
+    match note {
+        None => 1.0,
+        Some(note) => {
+            let semitones = note.0 / 100.0;
+            let corrected = semitones.round();
+            let note2 = Cent(100.0 * corrected);
+            let Hz(f1) = note.into();
+            let Hz(f2) = note2.into();
+            f2 / f1
+        },
+    }
 }
 
 impl PitchCorrect {
@@ -219,7 +227,6 @@ impl PitchCorrect {
         Self { 
             correctfn,
             p,
-            correction: 1.0,
             overlap: vec![0.0; overlapsz],
             inputphase: 0.0,
             transphase: 0.0,
@@ -233,9 +240,9 @@ impl PitchCorrect {
 
     // Return the corrected period, if its in range.
     // If its out of range then mark the input period as out of range, too.
-    fn get_corrected_period(&mut self) -> Option<f64> {
+    fn get_corrected_period(&mut self, correction: f64) -> Option<f64> {
         if let Some(p) = self.inputperiod {
-            let cp = self.correction * p;
+            let cp = p / correction;
             if cp.round() != 0.0 {
                 return Some(cp);
             }
@@ -243,9 +250,16 @@ impl PitchCorrect {
         return None;
     }
 
-    // We have inputs and a correction factor, generate new outputs.
-    pub fn repitch(&mut self) -> Vec<f64> {
-        let corrected_period = self.get_corrected_period();
+    // Generate outputs that repitch the input frequencies by correction factor.
+    pub fn repitch(&mut self, wanted_correction: f64) -> Vec<f64> {
+        // resample data by inverse of correction to increase frequencies by that amount
+        // ie. generate more samples at current rate to decrease the frequency.
+        let (n,m) = resampler::rational_approx(wanted_correction);
+        let correction = n as f64 / m as f64;
+        // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
+        let mut r = resampler::Resampler::new(m, n, 50.0, 0.7, 16);
+
+        let corrected_period = self.get_corrected_period(correction);
 
         // Delay the current window by an amount that matches the phase at the midpoint
         // of the overlap with the new data at position (0.5*overlapsize - delay).
@@ -268,8 +282,6 @@ impl PitchCorrect {
         }
 
         // create buf of resampled data from p.data
-        // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
-        let mut r = resampler::Resampler::new_approx(self.correction, 50.0, 0.7, 16);
         let n = self.p.data.len();
         assert!(delay < n);
         while data.len() < n {
@@ -317,16 +329,9 @@ impl PitchCorrect {
     // Process next sample, maybe generating a sequence of corrected samples
     pub fn process(&mut self, samp: f64) -> Option<Vec<f64>> {
         if let Some(result) = self.p.proc_sample(samp) {
-            if let Some(note) = result {
-                let note2 = (self.correctfn)(note);
-                let Hz(f1) = note.into();
-                let Hz(f2) = note2.into();
-                self.correction = f2 / f1;
-            } else {
-                self.correction = 1.0;
-            }
             self.inputperiod = self.p.period; // XXX perhaps it should be a return value
-            Some(self.repitch())
+            let correction = (self.correctfn)(result);
+            Some(self.repitch(correction))
         } else {
             None
         }

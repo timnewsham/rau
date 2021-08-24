@@ -14,7 +14,7 @@ pub struct Resampler {
 }
 
 // Find a good rational approximation for x using small integers
-fn rational_approx(x: f64) -> (usize, usize) {
+pub fn rational_approx(x: f64) -> (usize, usize) {
     let calc_err = |(n, d)| (x - (n as f64 / d as f64)).powi(2);
     let mut ratio = (1, 1);
     let mut err = calc_err(ratio);
