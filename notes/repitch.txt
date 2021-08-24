@@ -1,0 +1,122 @@
+
+
+Repitching is based on resampling of overlapping windows of audio data.
+
+Windowing is fixed by a window size, and a overlap percentage.
+Overlap percentages should be large enough to always include a full period of the audio
+(when periodic) in the overlap region. Ie. when using the pitch detector it should
+be at least 1/MIN_PERIODS (or around 0.17 if MIN_PERIODS is 6).
+
+window size 8, overlap 0.375 (3/8):
+data [-------------------------------------------------------------------------]
+win1 [-----xxx]
+win2      [-----xxx]
+win3           [-----xxx]
+
+Each window is repitched by running it through a resampler to create a new window
+of data of the same size.  This means that samples can be discarded from the original
+source (when downsampling) or used more than once via looping (when upsampling).
+
+When looping, the phase at the loop point must match the phase at the end of the input
+data.  To do this we need to know the lag that optimizes the NSDF or autocorrelation.
+If the data does not have a strong optimal lag, then phase matching doesnt matter and
+the data can be looped from the start.  When there's a strong optimal lag, then the
+ending phase is (window size % optimal lag) ahead of the starting phase, and the
+loop start point should be (window size % optimal lag).
+
+After upsampling the (possibly looped or truncated) window, the resulting window has
+a phase that is ((resampling factor * window size) % optimal lag) samples ahead of
+the start of the window.
+
+After a window has been repitched, it must be integrated into the output stream.
+Since each window might have advanced at a different rate, the phase at the overlap
+point of one window will not necessarily align with the starting phase of the next
+window. To align the phases, each new window may have to be shifted up to one period
+after the start of the overlap region from the previous window. After the regions are
+aligned, the two overlapping windows can be merged with a cross fade.  In the case
+when the windows were resampled with a factor of 1:1, the aligned overlapping regions 
+will be identical and the cross-fade will simply preserve the original data.
+When both windows were resampled with the same factor, the aligned overlapping regions
+will be similar except for the ramp-up of resampling filter in the new window, and
+cross fading should preserve most of the data from the overlap region.
+In the case when the two windows were resampled at different rates, the cross fading
+will smoothly transition from one rate to the other rate.
+This means that the phase of the start of the new region should line up at the center
+of the overlap region, and not at the start of the region.
+
+Example: winsize 24, overlap 9.
+  win2 was delayed by 1 sample (D) to phase align in the middle of win1's overlap region.
+  This meant that one of the samples in win2's overlap region (d) was no longer needed
+  and the overlap region started one sample earlier (x). The fade begins with the start
+  of the win2 data (which was delayed by 1 sample) and ends at the end of win1's data.
+
+
+                            phase alignment
+                               |
+                               v
+    win1:  [---------------XXXXXXXXX]
+    win2:                 [D--------------xXXXXXXXXd]
+    fade:                  [oooooooo]
+                               ^
+                               |
+                            phase alignment
+
+
+In order to phase align a new window with a previous window, the new window must be delayed
+by up to one period. The amount of the delay must ensure alignment in the middle of the
+previous window's overlap region. This requires that the overlap region be at least one
+period long.  To align the windows, the optimal lag of win1 (lag1') and win2 (lag2') must be known.
+Since both windows were resampled, the lags will be the lag of the original window data
+scaled by the resampling factor (lag1' = win1 resampling factor * lag1)..
+If either window does not have a strong optimal lag, then phase alignment is not important
+and win2's delay can be set at zero.  Otherwise, the phase at the middle of win1's overlap
+region is ((window size - 0.5 * overlap size) % lag1') samples ahead of win1's start. 
+The phase at the start of win2 is ((window size - overlap size) % lag1) samples ahead of
+win1's start.  (Note that this uses lag1 not lag1').  At anypoint win2[n], n samples ahead
+of the start of win2, the phase is (n % lag2') samples ahead of the start of win2.
+
+To match phases we want to use a delayed copy of win2, win2[n-k], and find the delay, k,
+which causes the phases to be identical at position (window size - 0.5 * overlap size)
+in win1 and (0.5 * overlap size) in the delayed win2.  Relative to the start of win1
+these two phase advances are:
+
+    win1 phase: (window size - 0.5 * overlap size) % lag1'
+    win2 phase: ((0.5 * overlap size - k) % lag2'
+
+The first quantity can be computed directly, call it the targphase.  Note, it is possible
+for targphase to exceed lag2', but for alignment we just require equivalance of these two
+phases modulo lag2'.  We wish to solve this for the minimal positive k:
+
+    targphase % lag2' == (0.5 * overlap size - k) % lag2'
+    (targphase - 0.5 * overlap size ) % lag2' == k % lag2'
+    k = (lag2' + (targphase % lag2') - ((0.5 * overlap size) % lag2`)) % lag2'
+
+or written out in terms of lag1, lag2 and resampling factors f1 and f2:
+
+    k = (lag2' 
+           + ((window size - 0.5 * overlap size) % (f1 * lag1)) % (f2 * lag2)
+           - ((0.5 * overlap size) % (f2 * lag2)
+        ) % (f2 * lag2)
+
+
+SIMPFLIED
+
+This can be simplified quite a bit by tracking phase from the start of the input
+series using a floating point number modulo 1.0.  The phase advance (pa) of any periodic
+signal is (1.0 / period) per sample and can be considered 0.0 for any aperiodic signal.
+After resampling by f, pa' = (1.0 / (f * period)) = pa / f.
+The start phase (sp) of a window win2 is: sp2 = sp1 + pa1 * (winsz - overlap) % 1.0.
+The phase at the midpoint of the overlap region is (after resampling and delaying by k):
+
+    targphase = (sp1 + (pa1 / f1) * (winsz - 0.5 * overlapsz - k1)) % 1.0.
+
+The phase at sample n of the resampled and delayed win2 is (sp2 + (pa2 / f2) * (0.5 * overlapsz -k)).
+The delay is found by solving for k:
+
+         targphase = sp2 + (pa2 / f2) * (0.5 * overlapsz - k)   mod 1.0
+
+         k * (pa2/f2) = (1.0 + (sp2 + (pa2/f2) * 0.5 * overlapssz) % 1.0 - targphase)    mod 1.0
+
+         k = (1.0 + ((sp2 + (pa2/f2) * 0.5 * overlapssz) % 1.0) - targphase) * f2 * lag2
+
+

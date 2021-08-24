@@ -15,11 +15,10 @@ pub struct Pitch {
     pub overlap: usize, // how much data to keep between batches, overlap < size
     min_note: Cent,
 
+    pub period: f64, // detected period in samples (not seconds), or 0.0 for none.
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub clarity: f64, // measure of how strong the note is
     pub nsdf: SDF,
-
-    cnt: usize, // XXX debug helper
 }
 
 pub fn period_to_note(period: impl Into<Sec>) -> Cent {
@@ -98,10 +97,9 @@ impl Pitch {
 
             note: None,
             clarity: 0.0,
+            period: 0.0,
 
             nsdf: SDF::new(size, max_period),
-
-            cnt: 0, // XXX debug
         }
     }
 
@@ -116,7 +114,6 @@ impl Pitch {
     }
 
     fn detect(&mut self) {
-        self.cnt += 1; // XXX
         assert!(self.data.len() == self.size);
 
         // compute NSDF into sdf.buf[0..k]
@@ -126,16 +123,22 @@ impl Pitch {
         // then find the first one that is within THRESH of the biggest one.
         let maxdelays = maxes(&self.nsdf.buf[0 .. self.nsdf.k]);
         if maxdelays.len() > 1 {
-            //if self.cnt == 70 { println!("maxdelays {:?}", maxdelays); }
             let peaks = maxdelays[1..].iter().map(|idx| parabolic_fit_peak(&self.nsdf.buf, *idx)).collect();
             let (_, peakval) = max_peak(&peaks);
             let (lag, clarity) = first_peak_above_thresh(&peaks, PEAK_THRESH * peakval);
 
-            // XXX no conversions exist yet for fractional Samples.
+            // XXX no conversions exist yet for fractional Samples. so we hard code the conversion here
             let period = lag / SAMPLE_RATE; // period in seconds
 
             self.clarity = clarity;
             let note: Cent = Hz(1.0 / period).into();
+            if note >= self.min_note {
+                // store best guess for period as long as its in range, even if we don't report a note.
+                // Any good guess for the period is useful when phase matching samples.
+                self.period = lag;
+            } else {
+                self.period = 0.0;
+            }
             if clarity > CLARITY_THRESH && note >= self.min_note {
                 self.note = Some(Hz(1.0 / period).into());
             } else {
@@ -144,6 +147,7 @@ impl Pitch {
         } else {
             self.note = None;
             self.clarity = 0.0;
+            self.period = 0.0;
         }
     }
 
@@ -168,7 +172,10 @@ impl Pitch {
 pub struct PitchCorrect {
     p: Pitch,
     correction: f64,
-    overlap: Vec<f64>, // overlap data from previous window
+    overlap: Vec<f64>, // overlap data from previous window (after repitching)
+    inputphase: f64, // phase at the start of the current window of input (before repitching)
+    inputperiod: f64, // detected period for current window
+    transphase: f64, // phase at the midpoint of the stored overlap data
 
     // for module implementation
     inp: f64,
@@ -195,6 +202,10 @@ impl PitchCorrect {
     }
 
     pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
+        // we require at least one period of overlap to properly phase match.
+        // this meanse overlapfrac should be at least 0.17 for MIN_PERIODS of 6.
+        assert!(overlapfrac > 1.0 / MIN_PERIODS as f64);
+
         let p = Pitch::new(min, max, overlapfrac);
         let overlapsz = p.overlap;
         let outsz = p.size - p.overlap;
@@ -202,6 +213,9 @@ impl PitchCorrect {
             p,
             correction: 1.0,
             overlap: vec![0.0; overlapsz],
+            inputphase: 0.0,
+            transphase: 0.0,
+            inputperiod: 0.0,
 
             inp: 0.0,
             buf: vec![0.0; outsz],
@@ -211,19 +225,41 @@ impl PitchCorrect {
 
     // We have inputs and a correction factor, generate new outputs.
     pub fn repitch(&mut self) -> Vec<f64> {
+        // Delay the current window by an amount that matches the phase at the midpoint
+        // of the overlap with the new data at position (0.5*overlapsize - delay).
+        let mut delay = 0;
+        let mut data: Vec<f64> = Vec::new();
+        let corrected_period = self.inputperiod * self.correction;
+        let mid_overlap = self.overlap.len() as f64 * 0.5;
+        if corrected_period != 0.0 {
+            let midphase = self.inputphase + mid_overlap / corrected_period;
+            let frac_period = (midphase + 1.0 - self.transphase) % 1.0;
+            delay = (frac_period * corrected_period) as usize;
+        }
+
+        let mut pos = 0;
+        while pos < delay {
+            data.push(0.0);
+            pos += 1;
+        }
+
         // create buf of resampled data from p.data
         // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
         let mut r = resampler::Resampler::new_approx(self.correction, 50.0, 0.7, 16);
-        let mut data: Vec<f64> = Vec::new();
-        let mut pos = 0;
         let n = self.p.data.len();
+        assert!(delay < n);
         while data.len() < n {
             r.resample(self.p.data[pos], |x| if data.len() < n { data.push(x); });
             pos += 1;
 
-            // simplistic looping. better approach would be loop at a good phase matching point.
-            // hopefully overlap mixing will save us here...
-            if pos >= n { pos = 0; }
+            // Output needs more samples than input.
+            if pos >= n {
+                if corrected_period.round() == 0.0 { // aperiodic, just loop at start.
+                    pos = 0;
+                } else { // loop at a position with the same phase as the current position
+                    pos = pos % (corrected_period.round() as usize);
+                }
+            }
         }
 
         // mix in the previous overlap with a linear fade
@@ -235,9 +271,21 @@ impl PitchCorrect {
         }
 
         // save the end as the next overlap, and return the prefix before that overlap.
-        let split = data.len() - self.overlap.len();
-        self.overlap.copy_from_slice(&data[split ..]);
-        data.truncate(split);
+        let chunk_len = data.len() - self.overlap.len();
+        self.overlap.copy_from_slice(&data[chunk_len ..]);
+        data.truncate(chunk_len);
+
+        // update phases
+        if self.inputperiod != 0.0 {
+            let startpoint = chunk_len as f64;
+            self.inputphase = (self.inputphase + startpoint / self.inputperiod as f64) % 1.0;
+            let transmidpoint = startpoint + mid_overlap;
+            self.transphase = (self.inputphase + transmidpoint / corrected_period) % 1.0;
+        } else { // aperiodic, phase matching not imortant
+            self.inputphase = 0.0;
+            self.transphase = 0.0;
+        }
+
         data
     }
 
@@ -249,8 +297,10 @@ impl PitchCorrect {
                 let Hz(f1) = note.into();
                 let Hz(f2) = note2.into();
                 self.correction = f2 / f1;
+                self.inputperiod = self.p.period; // XXX perhaps it should be a return value
             } else {
                 self.correction = 1.0;
+                self.inputperiod = 0.0;
             }
             Some(self.repitch())
         } else {
