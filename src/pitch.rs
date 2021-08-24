@@ -252,9 +252,10 @@ impl PitchCorrect {
             None => 0,
         };
 
+        assert!(delay < self.overlap.len());
         let mut pos = 0;
         while pos < delay {
-            data.push(0.0);
+            data.push(self.overlap[pos]);
             pos += 1;
         }
 
