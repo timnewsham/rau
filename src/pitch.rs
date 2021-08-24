@@ -15,7 +15,7 @@ pub struct Pitch {
     pub overlap: usize, // how much data to keep between batches, overlap < size
     min_note: Cent,
 
-    pub period: f64, // detected period in samples (not seconds), or 0.0 for none.
+    pub period: Option<f64>, // detected period in samples whenever possible
     pub note: Option<Cent>, // the note, if a sufficiently powerful note was detected
     pub clarity: f64, // measure of how strong the note is
     pub nsdf: SDF,
@@ -97,7 +97,7 @@ impl Pitch {
 
             note: None,
             clarity: 0.0,
-            period: 0.0,
+            period: None,
 
             nsdf: SDF::new(size, max_period),
         }
@@ -133,11 +133,11 @@ impl Pitch {
             self.clarity = clarity;
             let note: Cent = Hz(1.0 / period).into();
             if note >= self.min_note {
-                // store best guess for period as long as its in range, even if we don't report a note.
+                // store best guess for period, in samples, as long as its in range, even if we don't report a note.
                 // Any good guess for the period is useful when phase matching samples.
-                self.period = lag;
+                self.period = Some(lag);
             } else {
-                self.period = 0.0;
+                self.period = None;
             }
             if clarity > CLARITY_THRESH && note >= self.min_note {
                 self.note = Some(Hz(1.0 / period).into());
@@ -147,7 +147,7 @@ impl Pitch {
         } else {
             self.note = None;
             self.clarity = 0.0;
-            self.period = 0.0;
+            self.period = None;
         }
     }
 
@@ -174,7 +174,7 @@ pub struct PitchCorrect {
     correction: f64,
     overlap: Vec<f64>, // overlap data from previous window (after repitching)
     inputphase: f64, // phase at the start of the current window of input (before repitching)
-    inputperiod: f64, // detected period for current window
+    inputperiod: Option<f64>, // detected period for current window
     transphase: f64, // phase at the midpoint of the stored overlap data
 
     // for module implementation
@@ -215,7 +215,7 @@ impl PitchCorrect {
             overlap: vec![0.0; overlapsz],
             inputphase: 0.0,
             transphase: 0.0,
-            inputperiod: 0.0,
+            inputperiod: None,
 
             inp: 0.0,
             buf: vec![0.0; outsz],
@@ -223,19 +223,34 @@ impl PitchCorrect {
         }
     }
 
+    // Return the corrected period, if its in range.
+    // If its out of range then mark the input period as out of range, too.
+    fn get_corrected_period(&mut self) -> Option<f64> {
+        if let Some(p) = self.inputperiod {
+            let cp = self.correction * p;
+            if cp.round() != 0.0 {
+                return Some(cp);
+            }
+        }
+        return None;
+    }
+
     // We have inputs and a correction factor, generate new outputs.
     pub fn repitch(&mut self) -> Vec<f64> {
+        let corrected_period = self.get_corrected_period();
+
         // Delay the current window by an amount that matches the phase at the midpoint
         // of the overlap with the new data at position (0.5*overlapsize - delay).
-        let mut delay = 0;
         let mut data: Vec<f64> = Vec::new();
-        let corrected_period = self.inputperiod * self.correction;
         let mid_overlap = self.overlap.len() as f64 * 0.5;
-        if corrected_period != 0.0 {
-            let midphase = self.inputphase + mid_overlap / corrected_period;
-            let frac_period = (midphase + 1.0 - self.transphase) % 1.0;
-            delay = (frac_period * corrected_period) as usize;
-        }
+        let delay = match corrected_period {
+            Some(period) => {
+                let midphase = self.inputphase + mid_overlap / period;
+                let frac_period = (midphase + 1.0 - self.transphase) % 1.0;
+                (frac_period * period) as usize
+            },
+            None => 0,
+        };
 
         let mut pos = 0;
         while pos < delay {
@@ -254,10 +269,10 @@ impl PitchCorrect {
 
             // Output needs more samples than input.
             if pos >= n {
-                if corrected_period.round() == 0.0 { // aperiodic, just loop at start.
-                    pos = 0;
-                } else { // loop at a position with the same phase as the current position
-                    pos = pos % (corrected_period.round() as usize);
+                // if periodic, loop at point with same phase as pos. Otherwise loop from start
+                pos = match corrected_period {
+                    Some(cper) => pos % (cper.round() as usize),
+                    None => 0,
                 }
             }
         }
@@ -276,15 +291,16 @@ impl PitchCorrect {
         data.truncate(chunk_len);
 
         // update phases
-        if self.inputperiod != 0.0 {
-            let startpoint = chunk_len as f64;
-            self.inputphase = (self.inputphase + startpoint / self.inputperiod as f64) % 1.0;
-            let transmidpoint = startpoint + mid_overlap;
-            self.transphase = (self.inputphase + transmidpoint / corrected_period) % 1.0;
-        } else { // aperiodic, phase matching not imortant
-            self.inputphase = 0.0;
-            self.transphase = 0.0;
-        }
+        let startpoint = chunk_len as f64;
+        let transmidpoint = startpoint + mid_overlap;
+        self.inputphase = match self.inputperiod {
+            None => 0.0,
+            Some(inper) => (self.inputphase + startpoint / inper as f64) % 1.0,
+        };
+        self.transphase = match corrected_period {
+            None => 0.0,
+            Some(cper) => (self.inputphase + transmidpoint / cper) % 1.0,
+        };
 
         data
     }
@@ -297,11 +313,10 @@ impl PitchCorrect {
                 let Hz(f1) = note.into();
                 let Hz(f2) = note2.into();
                 self.correction = f2 / f1;
-                self.inputperiod = self.p.period; // XXX perhaps it should be a return value
             } else {
                 self.correction = 1.0;
-                self.inputperiod = 0.0;
             }
+            self.inputperiod = self.p.period; // XXX perhaps it should be a return value
             Some(self.repitch())
         } else {
             None
