@@ -169,7 +169,10 @@ impl Pitch {
     }
 }
 
+type CorrectFn = fn(Cent) -> Cent;
+
 pub struct PitchCorrect {
+    correctfn: CorrectFn,
     p: Pitch,
     correction: f64,
     overlap: Vec<f64>, // overlap data from previous window (after repitching)
@@ -184,7 +187,7 @@ pub struct PitchCorrect {
 }
 
 // correct the note. XXX this should be a configurable parameter of the corrector
-fn correct(note: Cent) -> Cent {
+pub fn quantize_note(note: Cent) -> Cent {
     let semitones = note.0 / 100.0;
     let corrected = semitones.round();
     Cent(100.0 * corrected)
@@ -198,10 +201,14 @@ impl PitchCorrect {
         let minfreq = parse::<f64>("minfreq", args[1])?;
         let maxfreq = parse::<f64>("maxfreq", args[2])?;
         let overlap = parse::<f64>("order", args[3])?;
-        Ok( modref_new(Self::new(Hz(minfreq), Hz(maxfreq), overlap)) )
+        Ok( modref_new(Self::new_quantize(Hz(minfreq), Hz(maxfreq), overlap)) )
     }
 
-    pub fn new(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
+    pub fn new_quantize(min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
+        Self::new(quantize_note, min, max, overlapfrac)
+    }
+
+    pub fn new(correctfn: CorrectFn, min: impl Into<Cent>, max: impl Into<Cent>, overlapfrac: f64) -> Self {
         // we require at least one period of overlap to properly phase match.
         // this meanse overlapfrac should be at least 0.17 for MIN_PERIODS of 6.
         assert!(overlapfrac > 1.0 / MIN_PERIODS as f64);
@@ -210,6 +217,7 @@ impl PitchCorrect {
         let overlapsz = p.overlap;
         let outsz = p.size - p.overlap;
         Self { 
+            correctfn,
             p,
             correction: 1.0,
             overlap: vec![0.0; overlapsz],
@@ -310,7 +318,7 @@ impl PitchCorrect {
     pub fn process(&mut self, samp: f64) -> Option<Vec<f64>> {
         if let Some(result) = self.p.proc_sample(samp) {
             if let Some(note) = result {
-                let note2 = correct(note);
+                let note2 = (self.correctfn)(note);
                 let Hz(f1) = note.into();
                 let Hz(f2) = note2.into();
                 self.correction = f2 / f1;
