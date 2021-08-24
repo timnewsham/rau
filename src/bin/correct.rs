@@ -23,9 +23,7 @@ fn mono_a(note: Option<Cent>) -> f64 {
             let octaves = note.0 / 1200.0;
             let corrected = octaves.round();
             let note2 = Cent(1200.0 * corrected);
-            let Hz(f1) = note.into();
-            let Hz(f2) = note2.into();
-            f2 / f1
+            freq_ratio(note, note2)
         },
     }
 }

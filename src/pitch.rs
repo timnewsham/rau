@@ -186,6 +186,13 @@ pub struct PitchCorrect {
     pos: usize,
 }
 
+// ratio to turn f1 into f2
+pub fn freq_ratio(f1: impl Into<Hz>, f2: impl Into<Hz>) -> f64 {
+    let Hz(hz1) = f1.into();
+    let Hz(hz2) = f2.into();
+    hz2 / hz1
+}
+
 // Quantize the note (if known) to the nearest 100 cents.
 pub fn quantize_note(note: Option<Cent>) -> f64 {
     match note {
@@ -194,9 +201,7 @@ pub fn quantize_note(note: Option<Cent>) -> f64 {
             let semitones = note.0 / 100.0;
             let corrected = semitones.round();
             let note2 = Cent(100.0 * corrected);
-            let Hz(f1) = note.into();
-            let Hz(f2) = note2.into();
-            f2 / f1
+            freq_ratio(note, note2)
         },
     }
 }
