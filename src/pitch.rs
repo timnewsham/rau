@@ -176,7 +176,7 @@ pub struct PitchCorrect {
     correctfn: CorrectFn,
     p: Pitch,
     overlap: Vec<f64>, // overlap data from previous window (after repitching)
-    inputperiod: Option<f64>, // detected period for current window
+    pub inputperiod: Option<f64>, // detected period for current window
     inputphase: f64, // phase at the start of the current window of input (before repitching), as frac of periods
     transphase: f64, // phase at the midpoint of the stored overlap data, as frac of periods
 
@@ -257,14 +257,17 @@ impl PitchCorrect {
 
     // Generate outputs that repitch the input frequencies by correction factor.
     pub fn repitch(&mut self, wanted_correction: f64) -> Vec<f64> {
-        // resample data by inverse of correction to increase frequencies by that amount
-        // ie. generate more samples at current rate to decrease the frequency.
         let (n,m) = resampler::rational_approx(wanted_correction);
         let correction = n as f64 / m as f64;
-        // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
-        let mut r = resampler::Resampler::new(m, n, 50.0, 0.7, 16);
-
         let corrected_period = self.get_corrected_period(correction);
+
+        // resample data by inverse of correction to increase frequencies by that amount
+        // ie. generate more samples at current rate to decrease the frequency.
+        // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
+        let order = 16;
+        let mut r = resampler::Resampler::new(m, n, 50.0, 0.7, order);
+
+        // XXX warm up resampler with `order` samples saved from end of last input window
 
         // Delay the current window by an amount that matches the phase at the midpoint
         // of the overlap with the new data at position (0.5*overlapsize - delay).
@@ -284,23 +287,23 @@ impl PitchCorrect {
             data.push(self.overlap[j]);
         }
 
+
         // fill data[] with resampled data from p.data[pos..] until full, looping as necessasry
         let n = self.p.data.len();
-        let mut pos = 0;
-        let mut consumed = 0;
+        let mut inpos = 0;
+        let mut inconsumed = 0.0;
         while data.len() < n {
-            r.resample(self.p.data[pos], |x| if data.len() < n { data.push(x); });
-            pos += 1;
-            consumed += 1;
+            r.resample(self.p.data[inpos], |x| if data.len() < n { data.push(x); });
+            inpos += 1;
+            inconsumed += 1.0;
 
             // Output needs more samples than input.
-            if pos >= n {
+            if inpos >= n {
                 // if periodic, loop at point with same phase as pos. Otherwise loop from start
-                // Number of periods consumed so far since start of self.p.data[] = consumed / inputperiod
-                // Number of excess samples since start of new period = consumed % inputperiod
-                // which is the same number of samples to skip from start when looping.
-                pos = match self.inputperiod {
-                    Some(inper) => consumed % (inper.round() as usize),
+                // Excess samples in a fractional period consumed so far since the start of self.p.data[]
+                // is `consumed % inputperiod`, which is the same number of samples to skip from start when looping.
+                inpos = match self.inputperiod {
+                    Some(inper) => (inconsumed % inper).round() as usize,
                     None => 0,
                 }
             }
