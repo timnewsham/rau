@@ -174,10 +174,12 @@ pub type CorrectFn = fn(Option<Cent>) -> f64;
 
 pub struct PitchCorrect {
     correctfn: CorrectFn,
-    p: Pitch,
-    overlap: Vec<f64>, // overlap data from previous window (after repitching)
+    pub p: Pitch,
+    warmup: Vec<f64>, // old inputs used to warm up the resampler
+    pub overlap: Vec<f64>, // overlap data from previous window (after repitching)
     pub inputperiod: Option<f64>, // detected period for current window
     inputphase: f64, // phase at the start of the current window of input (before repitching), as frac of periods
+    outputphase: f64, // phase of the first sample from the resampler
     transphase: f64, // phase at the midpoint of the stored overlap data, as frac of periods
 
     // for module implementation
@@ -206,6 +208,9 @@ pub fn quantize_note(note: Option<Cent>) -> f64 {
     }
 }
 
+const RESAMPORDER: usize = 16;
+const WARMSIZE: usize = RESAMPORDER;
+
 impl PitchCorrect {
     pub fn from_cmd(args: &Vec<&str>) -> Result<ModRef, String> {
         if args.len() != 4 {
@@ -213,7 +218,7 @@ impl PitchCorrect {
         }
         let minfreq = parse::<f64>("minfreq", args[1])?;
         let maxfreq = parse::<f64>("maxfreq", args[2])?;
-        let overlap = parse::<f64>("order", args[3])?;
+        let overlap = parse::<f64>("overlap", args[3])?;
         Ok( modref_new(Self::new_quantize(Hz(minfreq), Hz(maxfreq), overlap)) )
     }
 
@@ -232,8 +237,10 @@ impl PitchCorrect {
         Self { 
             correctfn,
             p,
+            warmup: vec![0.0; WARMSIZE],
             overlap: vec![0.0; overlapsz],
             inputphase: 0.0,
+            outputphase: 0.0,
             transphase: 0.0,
             inputperiod: None,
 
@@ -264,10 +271,8 @@ impl PitchCorrect {
         // resample data by inverse of correction to increase frequencies by that amount
         // ie. generate more samples at current rate to decrease the frequency.
         // XXX revisit parameters.  this is intentionally a bit loose assuming lower pitched inputs
-        let order = 16;
-        let mut r = resampler::Resampler::new(m, n, 50.0, 0.7, order);
-
-        // XXX warm up resampler with `order` samples saved from end of last input window
+        let resampler_delay = RESAMPORDER * m / n;
+        let mut r = resampler::Resampler::new(m, n, 50.0, 0.7, RESAMPORDER);
 
         // Delay the current window by an amount that matches the phase at the midpoint
         // of the overlap with the new data at position (0.5*overlapsize - delay).
@@ -275,9 +280,11 @@ impl PitchCorrect {
         let mid_overlap = self.overlap.len() as f64 * 0.5;
         let delay = match corrected_period {
             Some(period) => {
-                let midphase = self.inputphase + mid_overlap / period;
-                let frac_period = (midphase + 1.0 - self.transphase) % 1.0;
-                (frac_period * period) as usize
+                let midphase = (self.inputphase + mid_overlap / period) % 1.0;
+                let phasediff = (1.0 + midphase - self.transphase) % 1.0;
+                //println!("midphase {} transphase {}, diff {}", midphase, self.transphase, phasediff);
+                //println!("period {}, inputphase {}, outputphase {}", period, self.inputphase, self.outputphase);
+                (phasediff * period).round() as usize
             },
             None => 0,
         };
@@ -287,12 +294,17 @@ impl PitchCorrect {
             data.push(self.overlap[j]);
         }
 
-
         // fill data[] with resampled data from p.data[pos..] until full, looping as necessasry
         let n = self.p.data.len();
         let mut inpos = 0;
         let mut inconsumed = 0.0;
-        while data.len() < n {
+        assert!(resampler_delay < n); // no looping required
+        for _ in 0..resampler_delay { // feed resampler inputs until it starts giving meaningful outputs
+            r.resample(self.p.data[inpos], |_| /*discard*/ ());
+            inpos += 1;
+            inconsumed += 1.0;
+        }
+        while data.len() < n { // now start capturing data, we're in synch
             r.resample(self.p.data[inpos], |x| if data.len() < n { data.push(x); });
             inpos += 1;
             inconsumed += 1.0;
@@ -319,21 +331,26 @@ impl PitchCorrect {
 
         // save the end as the next overlap, and return the prefix before that overlap.
         let chunk_len = data.len() - self.overlap.len();
+        self.warmup.copy_from_slice(&self.p.data[chunk_len - WARMSIZE .. chunk_len]);
         self.overlap.copy_from_slice(&data[chunk_len ..]);
         data.truncate(chunk_len);
 
         // update phases
-        let nextstartpoint = chunk_len as f64;
+        let numinputs = chunk_len as f64; // new inputs, not counting the overlap
         self.inputphase = match self.inputperiod {
             None => 0.0,
-            Some(inper) => (self.inputphase + nextstartpoint / inper as f64) % 1.0,
+            Some(inper) => (self.inputphase + numinputs / inper as f64) % 1.0,
         };
 
-        // need to remove delay since inputphase didnt start until after delay samples.
-        let transmidpoint = (chunk_len - delay) as f64 + mid_overlap;
+        let numoutputs = (chunk_len - delay) as f64; // new outputs, not counting the overlap
+        let transmidpoint = numoutputs + mid_overlap;
         self.transphase = match corrected_period {
             None => 0.0,
-            Some(cper) => (self.inputphase + transmidpoint / cper) % 1.0,
+            Some(cper) => (self.outputphase + transmidpoint / cper) % 1.0,
+        };
+        self.outputphase = match corrected_period {
+            None => 0.0,
+            Some(cper) => (self.outputphase + numoutputs / cper) % 1.0,
         };
 
         data
