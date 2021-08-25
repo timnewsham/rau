@@ -1,5 +1,4 @@
 
-use std::cmp::min;
 use std::f64::consts::PI;
 use rau::units::*;
 use rau::resampler::*;
@@ -23,7 +22,7 @@ fn main() {
             r.resample(x, |y| ys.push(y));
         }
 
-        let cnt = 5; //min(xs.len(), ys.len());
+        let cnt = 5;
         for n in 0..cnt {
             println!("{:70} {}", format1(xs[n]), format1(ys[n]));
         }
