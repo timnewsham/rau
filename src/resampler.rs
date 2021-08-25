@@ -6,6 +6,7 @@ pub use crate::speaker::Sample;
 pub struct Resampler {
     n: usize,
     m: usize,
+    discard: usize, // number of outputs to discard before a good one comes out
     phasefilt: Vec<Vec<f64>>,
     delay: Vec<f64>,
     delaypos: usize,
@@ -49,23 +50,17 @@ impl Resampler {
 
     pub fn new(n: usize, m: usize, atten: f64, cutoff: f64, order: usize) -> Self {
         let filt = make_fir(n, atten, cutoff, order);
+        let discard = (0.5 * (order * n) as f64 / m as f64).round() as usize;
         Self {
             n,
             m,
+            discard,
             phasefilt: filt,
             delay: vec![0.0; order],
             delaypos: 0,
             order,
             phase: 0,
         }
-    }
-
-    // resample down, generating at most a single sample for each input
-    pub fn resample_down(&mut self, sample: f64) -> Option<f64> {
-        assert!(self.n <= self.m);
-        let mut out = None;
-        self.resample(sample, |s| out = Some(s));
-        out
     }
 
     pub fn resample<F: FnMut(f64)>(&mut self, sample: f64, mut cb: F) {
@@ -87,7 +82,11 @@ impl Resampler {
                     pos = 0;
                 }
             }
-            cb(out)
+            if self.discard == 0 {
+                cb(out)
+            } else {
+                self.discard -= 1;
+            }
         }
 
         self.phase -= self.n;
@@ -136,14 +135,6 @@ impl ResamplerStereo {
             order,
             phase: 0,
         }
-    }
-
-    // resample down, generating at most a single sample for each input
-    pub fn resample_down(&mut self, sample: Sample) -> Option<Sample> {
-        assert!(self.n <= self.m);
-        let mut out = None;
-        self.resample(sample, |s| out = Some(s));
-        out
     }
 
     pub fn resample<F: FnMut(Sample)>(&mut self, sample: Sample, mut cb: F) {
