@@ -170,7 +170,7 @@ impl Pitch {
 }
 
 // returns a factor of how much to increase the output frequency.
-type CorrectFn = fn(Option<Cent>) -> f64;
+pub type CorrectFn = fn(Option<Cent>) -> f64;
 
 pub struct PitchCorrect {
     correctfn: CorrectFn,
@@ -280,24 +280,27 @@ impl PitchCorrect {
         };
 
         assert!(delay < self.overlap.len());
-        let mut pos = 0;
-        while pos < delay {
-            data.push(self.overlap[pos]);
-            pos += 1;
+        for j in 0..delay {
+            data.push(self.overlap[j]);
         }
 
-        // fill data[] with resampled data from p.data until full
+        // fill data[] with resampled data from p.data[pos..] until full, looping as necessasry
         let n = self.p.data.len();
-        assert!(delay < n);
+        let mut pos = 0;
+        let mut consumed = 0;
         while data.len() < n {
             r.resample(self.p.data[pos], |x| if data.len() < n { data.push(x); });
             pos += 1;
+            consumed += 1;
 
             // Output needs more samples than input.
             if pos >= n {
                 // if periodic, loop at point with same phase as pos. Otherwise loop from start
-                pos = match corrected_period {
-                    Some(cper) => pos % (cper.round() as usize),
+                // Number of periods consumed so far since start of self.p.data[] = consumed / inputperiod
+                // Number of excess samples since start of new period = consumed % inputperiod
+                // which is the same number of samples to skip from start when looping.
+                pos = match self.inputperiod {
+                    Some(inper) => consumed % (inper.round() as usize),
                     None => 0,
                 }
             }
