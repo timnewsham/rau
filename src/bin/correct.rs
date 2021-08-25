@@ -45,7 +45,7 @@ fn pickfn(word: &str) -> CorrectFn {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let defmode = "quantize";
-    let deffn = "pitch_wav".to_string();
+    let deffn = "pitch.wav".to_string();
     let (mode, fname) = match args.len() {
         0|1 => (pickfn(defmode), &deffn),
         2 =>   (pickfn(defmode), &args[1]),
@@ -55,11 +55,6 @@ fn main() {
         
     println!("correcting {}", fname);
     let samples = read_wav_at(fname, SAMPLE_RATE);
-    //let mut c = PitchCorrect::new(quantize_note, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
-    //let mut c = PitchCorrect::new(quantize_note, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
-    //let mut c = PitchCorrect::new(pitch_up, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
-    //let mut c = PitchCorrect::new(nop, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
-    //let mut c = PitchCorrect::new(mono_a, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
     let mut c = PitchCorrect::new(mode, Cent(-(2400.0 + 500.0)), Cent(1200.0), 0.75);
     let mut speaker = Speaker::new();
     let mut tape = Tape::new("repitched.s16");
